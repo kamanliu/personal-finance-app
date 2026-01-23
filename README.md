@@ -1,55 +1,48 @@
-<<<<<<< HEAD
-# Welcome to your Expo app 👋
+Personal Finance Dashboard
+A React Native mobile application for real-time wealth tracking.
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+The Problem
+Most budgeting apps require manual data entry, which is tedious and leads to outdated info. I wanted to build a dashboard that connects directly to bank accounts to give a "one-glance" view of total net worth across different institutions.
 
-## Get started
+Tech Stack
+Mobile: React Native (Expo)
 
-1. Install dependencies
+Language: TypeScript (for type safety with financial data)
 
-   ```bash
-   npm install
-   ```
+Navigation: Expo Router (File-based routing)
 
-2. Start the app
+Banking Data: Plaid API (Link SDK)
 
-   ```bash
-   npx expo start
-   ```
+Icons/UI: Lucide-React / Vector Icons
 
-In the output, you'll find options to open the app in a
+Current Features
+- Modular UI: Reusable components for transaction lists and account balances.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+-  Navigation Flow: Separate views for Overview, Transactions, and Settings using Expo Router.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+-  Bank Connection (In Progress): Integrating the Plaid Link flow to securely authenticate users' bank accounts.
 
-## Get a fresh project
+How to Run it Locally
+Clone the repo:
 
-When you're ready, run:
+Bash
 
-```bash
-npm run reset-project
-```
+git clone https://github.com/kamanliu/personal-finance-app.git
+Install dependencies:
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Bash
 
-## Learn more
+npm install
+Start the app:
 
-To learn more about developing your project with Expo, look at the following resources:
+Bash
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+npx expo start
+Download the Expo Go app on your phone to scan the QR code and see it in action.
 
-## Join the community
+Upcoming Milestones
+[ ] Finalizing the Plaid access_token exchange logic.
 
-Join our community of developers creating universal apps.
+[ ] Adding automated transaction categorization (e.g., Grocery vs. Rent).
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-=======
-# personal-finance-app
-A React Native mobile app to centralize bank account details in real-time and automate budget tracking.
->>>>>>> a924952a838f2da91e317c4eca46d03b96b3bb83
+[ ] Creating a "Net Worth" chart using React Native Gifted Charts.
