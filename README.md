@@ -22,7 +22,7 @@ Most budgeting apps require manual data entry, which is tedious and leads to out
 
 1. **Clone the repo:**
    ```bash
-   git clone [https://github.com/kamanliu/personal-finance-app.git](https://github.com/kamanliu/personal-finance-app.git)
+   git clone https://github.com/kamanliu/personal-finance-app.git
 
 2. **Install dependencies:** 
      ```bash
