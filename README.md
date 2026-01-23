@@ -41,6 +41,7 @@ npx expo start
 Download the Expo Go app on your phone to scan the QR code and see it in action.
 
 Upcoming Milestones
+
 [ ] Finalizing the Plaid access_token exchange logic.
 
 [ ] Adding automated transaction categorization (e.g., Grocery vs. Rent).
