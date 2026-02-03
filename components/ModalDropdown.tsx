@@ -32,6 +32,7 @@ const ModalDropdown = ({ data, onSelect, value, isVisible, onClose }: DropdownPr
         // does three things at once when you tap the option
     onSelect(item);         // tell the main screen wt happened
     onClose();              // tell the parent to close the modal
+    
 
     }
 

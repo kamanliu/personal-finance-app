@@ -45,7 +45,8 @@ export default function AddAccount() {
       id: Math.floor(Date.now() / 1000).toString(),
       type: selectedType,
       name,
-      amount: Number(amount) || 0
+     balance: Number(amount) || 0,
+      transactions: [],
     })
 
     // Go back to AccountScreen

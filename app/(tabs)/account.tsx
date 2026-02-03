@@ -22,6 +22,8 @@ export default function AccountScreen() {
     // telling typescript that im create piles where label is
     // a string and the contents are arrays of strings
   )
+
+   
   return (
     <SafeAreaView style={styles.content_container} >
       <View style={styles.header}>
@@ -39,7 +41,11 @@ export default function AccountScreen() {
             {accounts.map((item) => (
 
               <View style={styles.listContainer} key={item.id}>
-                <Text >  {`${item.name} • ${item.amount}`}</Text>
+               
+                <TouchableOpacity  onPress={() => router.push('/TransactionList')}>
+                  {/* when you tap a specific item, it passes that specific string to the handler */}
+                    <Text >  {`${item.name} • ${item.balance}`}</Text>                     
+                  </TouchableOpacity>
                 <TouchableOpacity style={styles.delete_button} onPress={() => deleteAccount(item.id)}>
                     <Text >Delete</Text>
                 </TouchableOpacity>
@@ -49,6 +55,9 @@ export default function AccountScreen() {
             ))}
           </View>
         ))}
+        <TouchableOpacity style={styles.button_container} onPress={() => router.push('/AddTransaction')}>
+          <Text >+</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
 
