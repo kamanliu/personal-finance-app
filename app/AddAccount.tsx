@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ModalDropdown from '../components/ModalDropdown';
-import { useAccounts } from './context/AccountContext';
+import { useAccounts } from '../context/AccountContext';
+import { useAuth } from '../context/AuthContext';
 
 
 export default function AddAccount() {
@@ -19,7 +20,7 @@ export default function AddAccount() {
 
   const [error, setError] = useState<string | null>(null);
   const [isModalVisible, setModalVisible] = useState(true);
-
+  const { user } = useAuth();
 
 
 
@@ -36,20 +37,26 @@ export default function AddAccount() {
   //   setAmount('')
   //   setError(null)
   // }
-  const handleSave = () => {
+
+
+  const handleSave = async () => {
+
     if (!selectedType || !name.trim()) {
       setError("There is no title for the account.")
       return;
     }
-    addAccount({
-      id: Math.floor(Date.now() / 1000).toString(),
+    if (!user) return;
+
+    await addAccount({
+
       type: selectedType,
       name,
-     balance: Number(amount) || 0,
-      transactions: [],
+      balance: Number(amount) || 0,
+      user_id: user.id,
     })
 
     // Go back to AccountScreen
+
     router.back()
   }
 
@@ -83,7 +90,7 @@ export default function AddAccount() {
                 </Text>
               </TouchableOpacity>
             </View>
-            
+
             <TextInput
               style={styles.input}
               placeholder="Account Name"
