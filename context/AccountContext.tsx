@@ -48,10 +48,12 @@ interface AccountContextType {
     addTransaction: (newTrans: TransactionInsert) => Promise<void>;
     deleteTrans: (transId: string) => Promise<void>;
     getAccountById: (id: string | string[] | undefined) => Account | undefined;
+    getAccountByPlaidId: (plaidAccountId: string) => Account | undefined;
     refreshData: () => Promise<void>;
     changeMonth: (amount: number) => void;
     updateTransaction: (updateTrans: UpdateTransaction) => Promise<void>;
     currentDate: Date;
+
 
     // Promise<void> - this tells the rest of the app "wait for me to finish talking to
     // the cloud before u move on"
@@ -112,6 +114,7 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
     //     }
 
     // }
+
     const refreshData = async () => {
         console.log("1. refreshData started. Current user:", user?.id);
 
@@ -262,7 +265,10 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
         return accounts.find(acc => acc.id === id)
     }
 
-
+    const getAccountByPlaidId = (plaidAccountId: string) => {
+        if (!plaidAccountId) return undefined;
+        return accounts.find(acc => acc.account_id === plaidAccountId)
+    }
 
     const changeMonth = (amount: number) => {
         const newDate = new Date(currentDate);
@@ -313,7 +319,7 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
 
     return (
         /* we 'provide' these three thigns to all the 'children' (the pages) */
-        <AccountContext.Provider value={{ accounts, addAccount, deleteAccount, addTransaction, deleteTrans, getAccountById, refreshData, changeMonth, updateTransaction, currentDate }}>
+        <AccountContext.Provider value={{ accounts, addAccount, deleteAccount, addTransaction, deleteTrans, getAccountById, getAccountByPlaidId, refreshData, changeMonth, updateTransaction, currentDate }}>
             {children}
         </AccountContext.Provider>
     )

@@ -7,18 +7,19 @@ import { useFilteredTransactions } from '../hook/useFilteredTransactions';
 export default function TransactionList() {
 
 
-    const { accounts, deleteTrans, getAccountById, currentDate, changeMonth, updateTransaction } = useAccounts()
+    const { accounts, deleteTrans, getAccountById, currentDate, changeMonth, updateTransaction, getAccountByPlaidId } = useAccounts()
     const { accountId } = useLocalSearchParams();
 
     const selectedAccount = getAccountById(accountId);
     // console.log("the issue is here!");
     // console.log(selectedAccount)
-    const { displayTransactions, deposit: deposit, withdrawl: withdrawl, total } = useFilteredTransactions(selectedAccount?.transactions || [], accountId as string);
+    const { displayTransactions, deposit: deposit, withdrawl: withdrawl, total } = useFilteredTransactions(selectedAccount?.transactions || [], accountId as string, selectedAccount?.account_id ?? undefined);
     const router = useRouter();
 
 
     return (
         <SafeAreaView>
+            <TouchableOpacity onPress={() => router.back()}><Text>Go Back</Text></TouchableOpacity>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => changeMonth(-1)}>
                     <Text>{" < "}</Text>
@@ -44,16 +45,26 @@ export default function TransactionList() {
                 renderItem={({ item }) => (
 
                     <View>
-                        <TouchableOpacity onPress={() => router.push({pathname: '/AddTransaction', params: {transId: item.id}})} >
-                        {item.type !== "Transfer" ? (
-                            
-                                <Text>{`${(item.date)?.split('T')[0]} • ${item.type}  • ${item.amount} • ${item.category || 'N/A'} • ${getAccountById(item.account_id)?.name || 'Unknown'}`}</Text>
-                            
-                        ) : (
-                            
-                                <Text> {`${(item.date)?.split('T')[0]}• ${item.type}  • ${item.amount} • ${getAccountById(item.account_id)?.name || 'Unknown'} -> ${getAccountById(item.to_account_id || undefined)?.name} `}</Text>
-                         
-                        )}</TouchableOpacity>
+                        <TouchableOpacity onPress={() => router.push({ pathname: '/AddTransaction', params: { transId: item.id } })} >
+                            {item.type !== "Transfer" ? (
+
+                                <Text>
+                                    {`${(item.date)?.split('T')[0]} • ${item.type} • ${item.amount} • ${item.category || 'N/A'} • ${item.source === 'plaid'
+                                        ? getAccountByPlaidId(item.account_id)?.name
+                                        : getAccountById(item.account_id)?.name
+                                        || 'Unknown'}`}
+                                </Text>
+                            ) : (
+                                <Text> 
+                                    {`${(item.date)?.split('T')[0]} • ${item.type} • ${item.amount} • ${item.source === 'plaid'
+                                        ? getAccountByPlaidId(item.account_id)?.name
+                                        : getAccountById(item.account_id)?.name
+                                        || 'Unknown'} -> ${item.source === 'plaid'
+                                            ? getAccountByPlaidId(item.to_account_id || '')?.name
+                                            : getAccountById(item.to_account_id || undefined)?.name
+                                        }`}
+                                </Text>
+                            )}</TouchableOpacity>
                         <TouchableOpacity onPress={() => deleteTrans(item.id)}>
                             <Text>delete</Text>
                         </TouchableOpacity>
@@ -62,9 +73,9 @@ export default function TransactionList() {
                 )
 
                 } />
-                  <TouchableOpacity  onPress={() => router.back()}>
-                           <Text >Go Back</Text>
-                         </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.back()}>
+                <Text >Go Back</Text>
+            </TouchableOpacity>
         </SafeAreaView>
     )
 

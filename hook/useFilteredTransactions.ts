@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useAccounts } from '../context/AccountContext';
 
-export function useFilteredTransactions(rawTransactions: any[], accountId?: string) {
-                                                                // ? means optional
+export function useFilteredTransactions(rawTransactions: any[], accountId?: string, plaidAccountId?: string ) {
+  // ? means optional
   const { currentDate } = useAccounts();
   const sortedTransactions = useMemo(() => {
     if (!rawTransactions) return {
@@ -24,13 +24,10 @@ export function useFilteredTransactions(rawTransactions: any[], accountId?: stri
 
       //  a ternary operator (? :), which is like an if/else on one line.
       // const result = condition ? valueIfTrue : valueIfFalse;
-      const isCorrectAccount = accountId? 
-        (trans.type === 'Transfer'
-          ? trans.account_id === accountId || trans.to_account_id === accountId
-          : trans.account_id === accountId)
-       :
-       true
-       ;
+      const isCorrectAccount = accountId ? (trans.type === 'Transfer'
+        ? trans.account_id === accountId || trans.account_id === plaidAccountId || trans.to_account_id === accountId
+        : trans.account_id === accountId || trans.account_id === plaidAccountId)
+        : true;
       //console.log('Transaction:', trans.id, 'Type:', trans.type, 'From:', trans.account_id, 'To:', trans.to_account_id, 'AccountId:', accountId, 'Passes:', isCorrectMonth && isCorrectAccount);
       return isCorrectMonth && isCorrectAccount
     })
@@ -39,27 +36,27 @@ export function useFilteredTransactions(rawTransactions: any[], accountId?: stri
     const transSummary = filtered.reduce((acc, item) => {
 
       const amt = Number(item.amount) || 0;
-      if (item.type === 'income' ) {
+      if (item.type === 'Income' || item.type === 'income') {
         acc.deposit += amt
         acc.total += amt
 
 
       }
-      else if (item.type === 'expense') {
+      else if (item.type === 'Expense' || item.type === 'expense') {
         acc.withdrawl += amt
         acc.total -= amt
 
       }
-     else{
-      if (item.account_id === accountId ){
-      acc.withdrawl += amt
-      acc.total -= amt
-     }
-     if (item.to_account_id === accountId){
-      acc.deposit += amt
-      acc.total += amt
-     }  
-    }
+      else {
+        if (item.account_id === accountId) {
+          acc.withdrawl += amt
+          acc.total -= amt
+        }
+        if (item.to_account_id === accountId) {
+          acc.deposit += amt
+          acc.total += amt
+        }
+      }
 
       return acc
 

@@ -1,44 +1,58 @@
 # 💰 Personal Finance Dashboard
-**A React Native mobile application for real-time wealth tracking.**
 
-### **The Problem**
-Most budgeting apps require manual data entry, which is tedious and leads to outdated info. I wanted to build a dashboard that connects directly to bank accounts to give a "one-glance" view of total net worth across different institutions.
+A production-grade React Native mobile application for real-time wealth tracking with bank-level security and automated transaction syncing.
 
-### **Tech Stack**
-* **Mobile:** React Native (Expo)
-* **Language:** TypeScript (for type safety with financial data)
-* **Navigation:** Expo Router (File-based routing)
-* **Banking Data:** Plaid API (Link SDK)
-* **Icons/UI:** Lucide-React / Vector Icons
+## The Problem
 
-### **Current Features**
-* **Modular UI:** Reusable components for transaction lists and account balances.
-* **Navigation Flow:** Separate views for Overview, Transactions, and Settings using Expo Router.
-* **Bank Connection (In Progress):** Integrating the Plaid Link flow to securely authenticate users' bank accounts.
+Most budgeting apps require manual data entry, leading to outdated and incomplete financial snapshots. **TrackApp** solves this by connecting directly to users' bank accounts via Plaid, providing real-time net worth calculations across multiple institutions.
 
 ---
 
-### **How to Run it Locally**
+## ✨ Features
 
-1. **Clone the repo:**
-   ```bash
-   git clone https://github.com/kamanliu/personal-finance-app.git
+### Core Banking Integration
+- **Plaid Bank Linking** - Securely connect checking, savings, and credit card accounts
+- **Multi-Bank Support** - Link multiple banks simultaneously
+- **Real-time Webhooks** - Instant notifications when transactions arrive at your bank
+- **Smart Disconnect** - Remove banks with automatic cascade deletion of associated data
 
-2. **Install dependencies:** 
-     ```bash
-     npm install
+### Transaction Management
+- **Automated Sync** - Background cron job processes transactions every 1 minute
+- **Real-time Updates** - WebSocket listeners push changes to UI instantly (no manual refresh!)
+- **Transaction Editing** - Modify transaction categories, notes, and amounts
+- **Smart Categorization** - Plaid's personal finance categories for expense tracking
+- **Pending Transaction Support** - See transactions before they fully clear
 
-2. **Start the app:** 
-     ```bash
-     npx expo start
+### Wealth Dashboard
+- **Net Worth Calculation** - Real-time summary: Assets vs. Liabilities
+- **Account Balancing** - Correct handling of credit card debt vs. asset accounts
+- **Monthly Filtering** - View transactions by month
+- **Multi-Account Stitch** - Unified view across all connected banks
 
-Download the Expo Go app on your phone to scan the QR code and see it in action.
+### Advanced Architecture
+- **Queue-Based Processing** - Atomic claims prevent duplicate syncing
+- **Error Recovery** - Automatic cleanup if background jobs fail (no zombie transactions)
+- **Rate Limiting** - Respects Plaid's API limits with smart cursor management
+- **Production Logging** - Full error tracking for debugging
 
+---
 
-Upcoming Milestones
+## Tech Stack
 
-[ ] Finalizing the Plaid access_token exchange logic.
+| Layer | Technology |
+|-------|-----------|
+| **Mobile** | React Native (Expo) |
+| **Language** | TypeScript (type-safe financial data) |
+| **Navigation** | Expo Router (file-based routing) |
+| **Backend** | Supabase (PostgreSQL + Edge Functions) |
+| **Banking** | Plaid API (bank connections + webhooks) |
+| **Real-time** | Supabase Realtime (WebSocket subscriptions) |
+| **State Management** | React Context API |
+| **Background Jobs** | PostgreSQL pg_cron + HTTP triggers |
+| **UI Components** | Lucide React, React Native |
 
-[ ] Adding automated transaction categorization (e.g., Grocery vs. Rent).
+---
 
-[ ] Creating a "Net Worth" chart using React Native Gifted Charts.
+## Architecture Overview
+
+### System Design

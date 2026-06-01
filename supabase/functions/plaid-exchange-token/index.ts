@@ -10,7 +10,6 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-
 }
 const client_id = Deno.env.get("PLAID_CLIENT_ID")
 const secret = Deno.env.get("PLAID_SECRET")
@@ -57,15 +56,15 @@ Deno.serve(async (req) => {
       .select()
       .single();
 
-    if (itemError)  {
-  console.error("Upsert error:", JSON.stringify(itemError));
-  throw itemError;
-}
+    if (itemError) {
+      console.error("Upsert error:", JSON.stringify(itemError));
+      throw itemError;
+    }
 
-if (!insertedItem) {
-  console.error("insertedItem is null after upsert");
-  throw new Error("Failed to upsert plaid_item");
-}
+    if (!insertedItem) {
+      console.error("insertedItem is null after upsert");
+      throw new Error("Failed to upsert plaid_item");
+    }
     console.log("Successfully saved plaid_item:", insertedItem.id);
 
     const accountsResponse = await fetch("https://sandbox.plaid.com/accounts/get", {
@@ -86,7 +85,7 @@ if (!insertedItem) {
       account_id: acc.account_id,
       plaid_item_id: insertedItem.id,
       name: acc.name,
-      balance: acc.balances.current ?? acc.balances.available ?? 0,
+      balance: Number((acc.balances.available ?? acc.balances.current ?? 0).toFixed(2)),
       type: acc.type,
       source: 'plaid'
 

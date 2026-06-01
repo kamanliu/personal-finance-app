@@ -32,13 +32,16 @@ export default function AccountScreen() {
   const balanceSummary = useMemo(() => {
     return accounts.reduce((accumulator, account) => {
       const bal = account.balance || 0;
-      if (bal > 0) {
-        accumulator.assets += bal;
+      
+      if(account.type === 'credit' || account.type === 'loan'){
+        accumulator.liabilities += bal;
+        accumulator.total -= bal;
       }
       else {
-        accumulator.liabilities += Math.abs(bal)
+        accumulator.assets += bal;
+        accumulator.total += bal;
       }
-      accumulator.total += bal;
+      
 
       return accumulator
 

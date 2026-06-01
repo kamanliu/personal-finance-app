@@ -45,7 +45,9 @@ Deno.serve(async (req) => {
         products: ['transactions'],
         country_codes: ['CA', 'US'],
         language: 'en',
-        user: { client_user_id: user_id } // User from frontend, Plaid needs a unique ID for the user
+        user: { client_user_id: user_id }, // User from frontend, Plaid needs a unique ID for the user
+        webhook: "https://svjigbewalmygfufmvie.supabase.co/functions/v1/plaid-webhook"
+        
       })
     })
 

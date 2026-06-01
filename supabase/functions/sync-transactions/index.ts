@@ -42,6 +42,7 @@ Deno.serve(async (req) => {
       .from('plaid_items')
       .select('access_token, next_cursor, item_id') // Add item_id here
       .eq('user_id', user_id)
+
     if (itemError) {
       console.error(itemError.message)
       return new Response(
@@ -65,82 +66,96 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Extract the first item without redeclaring a `const` block for `itemData`
-    const itemData = itemDataList[0];
+    // Create a container to hold all transactions from ALL accounts
+    let totalTransactionsInserted = 0;
+    const syncedItemIds: string[] = [];
 
-    const response = await fetch("https://sandbox.plaid.com/transactions/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_id: client_id,
-        secret: secret,
-        access_token: itemData.access_token,
-        cursor: itemData.next_cursor
+    //Loop through every bank link linked to the user dynamically
+    for (const itemData of itemDataList) {
+      const response = await fetch("https://sandbox.plaid.com/transactions/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: client_id,
+          secret: secret,
+          access_token: itemData.access_token,
+          cursor: itemData.next_cursor
+        })
       })
-    })
 
-    if (!response.ok) {
-      const errText = await response.text()
-      throw new Error(`Plaid API call failed: ${errText}`)
-    }
+      if (!response.ok) {
+        const errText = await response.json()
+        // Check if it's THIS specific error
+        if (errText.error_code === 'TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION') {
+          // If yes, reset the cursor to null
+          await supabaseClient.from('plaid_items')
+            .update({ next_cursor: null })
+            .eq('item_id', itemData.item_id)
 
-    const plaidData = await response.json()
-
-    const { added, modified, removed, next_cursor } = plaidData
-    const allChanges = [...(added || []), ...(modified || [])]
-
-    console.log('Plaid data:', { added: added?.length, modified: modified?.length, removed: removed?.length })
-    console.log('Total transactions to insert:', allChanges.length)
-
-    const { data: localAccounts } = await supabaseClient
-      .from('accounts')
-      .select('id,account_id') // id - UUID, account_id - plaid'string
-      .eq('user_id', user_id)
-
-    // a quick lookup map
-    const accountMap = new Map(localAccounts?.map(a => [a.account_id, a.id] || []));
-
-    // update the transactionsToInsert mapping block
-    const transactionsToInsert = allChanges.map((plaidTx) => {
-
-      // Find the matching UUID using Plaid's account_id
-      const localAccountUuid = accountMap.get(plaidTx.account_id) || plaidTx.account_id;
-      return {
-        user_id: user_id,
-        account_id: plaidTx.account_id,
-        note: plaidTx.merchant_name ?? plaidTx.name ?? 'Unknown Transaction', // Added extra fallback
-        amount: plaidTx.amount,
-        date: plaidTx.date,
-        category: plaidTx.personal_finance_category?.primary ?? 'General',
-        pending: plaidTx.pending,
-        plaid_transaction_id: plaidTx.transaction_id,
-        source: 'plaid',
-        type: plaidTx.amount > 0 ? 'expense' : 'income'
+          // Then tell the user to try again
+          console.warn(`Cursor reset for item ${itemData.item_id}. Skipping to retry next time.`);
+          continue; // Skip this item for now and move to the next bank connection safely
+        }
+        console.error(`Plaid API call failed for item ${itemData.item_id}:`, errText);
+        continue;
       }
-    })
 
-    if (transactionsToInsert.length > 0) {
-      const { error: upsertError } = await supabaseClient.from('transactions')
-        .upsert(transactionsToInsert, { onConflict: 'plaid_transaction_id' })
+      const plaidData = await response.json()
+      const { added, modified, removed, next_cursor } = plaidData
+      const allChanges = [...(added || []), ...(modified || [])]
 
-      if (upsertError) {
-        console.error('Upsert error:', upsertError)
-        throw upsertError
+      // update the transactionsToInsert mapping block
+      const transactionsToInsert = allChanges.map((plaidTx) => {
+
+
+        // Find the matching UUID using Plaid's account_id
+        const transactionType = plaidTx.amount < 0 ? 'Income' : 'Expense';
+        return {
+          user_id: user_id,
+          account_id: plaidTx.account_id,
+          note: plaidTx.merchant_name ?? plaidTx.name ?? 'Unknown Transaction',
+          // 2. Turn the amount into a clean, absolute positive number for the database
+          amount: Math.abs(plaidTx.amount),
+          date: plaidTx.date,
+          category: plaidTx.personal_finance_category?.primary ?? 'General',
+          pending: plaidTx.pending,
+          plaid_transaction_id: plaidTx.transaction_id,
+          source: 'plaid',
+          type: transactionType
+        }
+      })
+
+
+      if (transactionsToInsert.length > 0) {
+        const { error: upsertError } = await supabaseClient
+          .from('transactions')
+          .upsert(transactionsToInsert, { onConflict: 'plaid_transaction_id' })
+
+        if (upsertError) {
+          console.error('Upsert error:', upsertError)
+          throw upsertError;
+        }
+        totalTransactionsInserted += transactionsToInsert.length;
       }
+
+      if (removed && removed.length > 0) {
+        await supabaseClient.from('transactions')
+          .delete()
+          .in('plaid_transaction_id', removed.map(t => t.transaction_id))
+      }
+
+      await supabaseClient.from('plaid_items')
+        .update({ next_cursor: next_cursor })
+        .eq('item_id', itemData.item_id) // Targets the specific connection being synced
+
+      syncedItemIds.push(itemData.item_id);
     }
-
-    if (removed && removed.length > 0) {
-      await supabaseClient.from('transactions')
-        .delete()
-        .in('plaid_transaction_id', removed.map(t => t.transaction_id))
-    }
-
-    await supabaseClient.from('plaid_items')
-      .update({ next_cursor: next_cursor })
-      .eq('item_id', itemData.item_id) // Targets the specific connection being synced
-
     return new Response(
-      JSON.stringify({ success: true, new_cursor: next_cursor }),
+      JSON.stringify({
+        success: true,
+        message: `Successfully synced ${syncedItemIds.length} financial links.`,
+        transactions_processed: totalTransactionsInserted
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     )
 

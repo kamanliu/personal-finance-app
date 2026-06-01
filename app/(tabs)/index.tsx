@@ -5,7 +5,7 @@ import { useFilteredTransactions } from '../../hook/useFilteredTransactions';
 
 export default function Home() {
 
-  const { accounts, getAccountById, changeMonth, currentDate } = useAccounts();
+  const { accounts, getAccountById, changeMonth, currentDate, getAccountByPlaidId } = useAccounts();
 
   // .flatMap grabs the transactions array from every acocunt and merges them
   const allTransactions = accounts.flatMap(acc => acc.transactions || [])
@@ -22,25 +22,38 @@ export default function Home() {
           <Text>{" > "}</Text>
         </TouchableOpacity>
       </View>
-             <View style={styles.header}>
-              <Text style={styles.header_text}>Income</Text>
-              <Text style={styles.header_text}>Expense</Text>
-              <Text style={styles.header_text}>Total</Text>
-            </View>
-                  <View style = {styles.header}>
-                     <Text style={styles.header_text}>${income.toLocaleString()}</Text>  
-                     <Text style={styles.header_text}>${expense.toLocaleString()}</Text>
-                     <Text style={styles.header_text}>${total.toLocaleString()}</Text>
-                  </View>
+      <View style={styles.header}>
+        <Text style={styles.header_text}>Income</Text>
+        <Text style={styles.header_text}>Expense</Text>
+        <Text style={styles.header_text}>Total</Text>
+      </View>
+      <View style={styles.header}>
+        <Text style={styles.header_text}>${income.toLocaleString()}</Text>
+        <Text style={styles.header_text}>${expense.toLocaleString()}</Text>
+        <Text style={styles.header_text}>${total.toLocaleString()}</Text>
+      </View>
       <FlatList
         data={displayTransactions}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View>
             {item.type !== "Transfer" ? (
-              <Text >  {`${item.date ? item.date.split('T')[0] : 'No Date'} • ${item.type}  • ${item.amount} • ${item.category || 'N/A'} • ${getAccountById(item.account_id)?.name || 'Unknown'}`}</Text>
+              <Text>
+                {`${item.date ? item.date.split('T')[0] : 'No Date'} • ${item.type} • ${item.amount} • ${item.category || 'N/A'} • ${item.source === 'plaid'
+                    ? getAccountByPlaidId(item.account_id)?.name
+                    : getAccountById(item.account_id)?.name
+                    || 'Unknown'}`}
+              </Text>
             ) : (
-              <Text >  {`${item.date ? item.date.split('T')[0] : 'No Date'} • ${item.type}  • ${item.amount} • ${getAccountById(item.account_id)?.name || 'Unknown'} -> ${getAccountById(item.to_account_id || undefined)?.name} `}</Text>
+              <Text>
+                {`${item.date ? item.date.split('T')[0] : 'No Date'} • ${item.type} • ${item.amount} • ${item.source === 'plaid'
+                    ? getAccountByPlaidId(item.account_id)?.name
+                    : getAccountById(item.account_id)?.name
+                    || 'Unknown'} -> ${item.source === 'plaid'
+                    ? getAccountByPlaidId(item.to_account_id || '')?.name
+                    : getAccountById(item.to_account_id || undefined)?.name
+                  }`}
+              </Text>
             )}
           </View>
 

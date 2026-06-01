@@ -21,7 +21,7 @@ export default function AddTransaction() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
     // Connecting to the "brain"
-    const { accounts, addTransaction, getAccountById, updateTransaction } = useAccounts()
+    const { accounts, addTransaction, getAccountById, updateTransaction, getAccountByPlaidId } = useAccounts()
     // pulls in your global list of accounts and the function to save data
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
     const [selectedAccountName, setSelectedAccountName] = useState<string | null>(null);
@@ -66,7 +66,15 @@ export default function AddTransaction() {
             setSelectedAccountId(editingTrans.account_id)
             setSelectedTargetAccountId(editingTrans.to_account_id)
             setNote(editingTrans.note || '')
-
+            
+            // handle both manual and plaid accounts
+            if (editingTrans.source === 'plaid') {
+                const plaidAccount = getAccountByPlaidId(editingTrans.account_id)
+                setSelectedAccountId(plaidAccount?.id || '') // Use the account UUID
+            }else{
+                setSelectedAccountId(editingTrans.account_id) // Use the manual account ID
+            }
+            setSelectedTargetAccountId(editingTrans.to_account_id)
         } else {
             setDate(new Date())
             setAmount('')
