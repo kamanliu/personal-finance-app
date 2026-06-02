@@ -65,15 +65,15 @@ If something crashes during sync, the job gets marked as failed (not stuck forev
 
 ## Current Features
 
-✅ Link multiple banks at once
-✅ Real-time transaction syncing (every minute)
-✅ Auto-update UI when new data arrives
-✅ Edit/delete transactions
-✅ View net worth (Assets vs Liabilities)
-✅ Filter transactions by month
-✅ Disconnect banks with cascade delete
-✅ Full error recovery (no zombie jobs)
-✅ Proper handling of credit cards as liabilities
+- Link multiple banks at once ✔︎
+-  Real-time transaction syncing (every minute) ✔︎
+-  Auto-update UI when new data arrives ✔︎
+-  Edit/delete transactions ✔︎
+-  View net worth (Assets vs Liabilities) ✔︎
+-  Filter transactions by month ✔︎
+-  Disconnect banks with cascade delete ✔︎
+-  Full error recovery (no zombie jobs) ✔︎
+-  Proper handling of credit cards as liabilities ✔︎
 
 ## What's Not Done Yet
 
