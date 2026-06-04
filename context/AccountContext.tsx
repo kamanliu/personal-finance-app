@@ -53,6 +53,7 @@ interface AccountContextType {
     changeMonth: (amount: number) => void;
     updateTransaction: (updateTrans: UpdateTransaction) => Promise<void>;
     currentDate: Date;
+     isSyncing: boolean;
 
 
     // Promise<void> - this tells the rest of the app "wait for me to finish talking to
@@ -73,6 +74,7 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
     // This is the GLOBAL memory for the entire app.
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [isSyncing, setIsSyncing] = useState(false);
     const { user } = useAuth();
     console.log("Current User State:", user ? "Logged In" : "Logged Out/Null");
     // const refreshData = async () => {
@@ -319,7 +321,7 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
 
     return (
         /* we 'provide' these three thigns to all the 'children' (the pages) */
-        <AccountContext.Provider value={{ accounts, addAccount, deleteAccount, addTransaction, deleteTrans, getAccountById, getAccountByPlaidId, refreshData, changeMonth, updateTransaction, currentDate }}>
+        <AccountContext.Provider value={{ accounts, addAccount, deleteAccount, addTransaction, deleteTrans, getAccountById, getAccountByPlaidId, refreshData, changeMonth, updateTransaction, currentDate, isSyncing }}>
             {children}
         </AccountContext.Provider>
     )
