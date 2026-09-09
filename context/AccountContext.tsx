@@ -1,18 +1,23 @@
 import { Database } from '@/database.types';
 import { supabase } from '@/lib/supabase';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useTransactionSync } from '../hook/useTransactionSync';
 import { useAuth } from './AuthContext';
+
 
 /* Set up a 'system' for the app, by moving the state to a central file,
 this allow any page to 'read' or 'write' to the account list simultaneosly */
 
 export type Account = Database['public']['Tables']['accounts']['Row'] & { transactions: Transaction[] }
 export type Transaction = Database['public']['Tables']['transactions']['Row']
+export type Budget = Database['public']['Tables']['budgets']['Row']
 
 export type AccountInsert = Database['public']['Tables']['accounts']['Insert']
 export type TransactionInsert = Database['public']['Tables']['transactions']['Insert']
+export type BudgetInsert = Database['public']['Tables']['budgets']['Insert']
 
 export type UpdateTransaction = Database['public']['Tables']['transactions']['Update']
+export type UpdateBudget = Database['public']['Tables']['budgets']['Update']
 
 
 // defines the shape of a single account object
@@ -21,7 +26,7 @@ export type UpdateTransaction = Database['public']['Tables']['transactions']['Up
 //     user_id: string;
 //     type: string;
 //     name: string;
-//     balance: number;
+//     useTransactionSync: number;
 //     transactions: Transaction[];
 // }
 
@@ -43,17 +48,23 @@ export type UpdateTransaction = Database['public']['Tables']['transactions']['Up
 
 interface AccountContextType {
     accounts: Account[];
-    addAccount: (newAcc: AccountInsert) => Promise<void>;
+    budgets: Budget[];
+    addAccount: (newAcc: AccountInsert) => Promise<Account | null>;
     deleteAccount: (id: string) => Promise<void>;
     addTransaction: (newTrans: TransactionInsert) => Promise<void>;
     deleteTrans: (transId: string) => Promise<void>;
+    addBudget: (newBudget: BudgetInsert) => Promise<void>;
+    deleteBudget: (budgetId: string) => Promise<void>;
     getAccountById: (id: string | string[] | undefined) => Account | undefined;
     getAccountByPlaidId: (plaidAccountId: string) => Account | undefined;
     refreshData: () => Promise<void>;
     changeMonth: (amount: number) => void;
     updateTransaction: (updateTrans: UpdateTransaction) => Promise<void>;
+    updateBudget: (updateBud: UpdateBudget) => Promise<void>;
     currentDate: Date;
-     isSyncing: boolean;
+    isSyncing: boolean;
+    syncStatus: 'pending' | 'processing' | 'completed' | 'failed' | null;
+
 
 
     // Promise<void> - this tells the rest of the app "wait for me to finish talking to
@@ -65,6 +76,7 @@ interface AccountContextType {
 /* create the context and give it a starting value of 'undefined'
 like creating a unique 'channel', only components that specficially tune
 into  AccountContext will be able to hear the datat u are brodcasting. */
+
 const AccountContext = createContext<AccountContextType | undefined>(undefined);
 
 // The provider that wraps the app
@@ -73,9 +85,20 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
 
     // This is the GLOBAL memory for the entire app.
     const [accounts, setAccounts] = useState<Account[]>([]);
+    const [budgets, setBudgets] = useState<Budget[]>([]);
+
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [isSyncing, setIsSyncing] = useState(false);
     const { user } = useAuth();
+    const { isSyncing, syncStatus } = useTransactionSync(user?.id || '')
+
+
+
+    useEffect(() => {
+        if (syncStatus === 'completed') {
+            console.log('✅ Sync complete! Refreshing data...')
+            refreshData()
+        }
+    }, [syncStatus])
     console.log("Current User State:", user ? "Logged In" : "Logged Out/Null");
     // const refreshData = async () => {
     //     if (!user) return;
@@ -140,6 +163,14 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
 
             console.log("4. Transactions received:", transData?.length || 0);
 
+            const { data: budgetData, error: budgetError } = await supabase
+                .from('budgets')
+                .select('*')
+                .eq('user_id', user.id);
+
+            console.log("5. Budget received:", budgetData?.length || 0);
+
+
             if (accError) console.error("Database Error (Accounts):", accError.message);
             // Turn "Plaid Items" into "Accounts" so the app can read them
 
@@ -152,7 +183,7 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
                     // Otherwise, it's manual. Use the Supabase 'id'.
                     const lookupId = account.account_id || account.id;
                     const relatedTransactions = (transData || []).filter(t =>
-                        t.account_id === lookupId
+                        t.account_id === lookupId || t.to_account_id === lookupId
                     );
                     return { ...account, id: account.id, transactions: relatedTransactions };
                 });
@@ -160,6 +191,7 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
                 console.log("5. Final stitched data count:", stitchedData.length);
                 setAccounts(stitchedData as Account[]);
             }
+            if (budgetData) { setBudgets(budgetData as Budget[]) }
         } catch (err) {
             console.error("6. Catch block error:", err);
         }
@@ -179,18 +211,19 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
 
     const addAccount = async (newAcc: AccountInsert) => {
         // call supabase and ask it to save the new Account
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('accounts')
-            .insert(newAcc);
-        // .select()
-        // .single();
+            .insert(newAcc)
+            .select()
+            .single();
 
 
         if (error) {
             console.error('Add Account failed,', error.message);
-            return; //stop here if it didnt work
+            return null;
         }
         refreshData();
+        return { ...data, transactions: [] };
     }
 
     // This creates a new list excluding the ID we want to remove
@@ -199,20 +232,33 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
         // // filter() create a new list that includes every item except the
         // // one u want to get rid of 
         // // "Keep every item UNLESS its id matches the one I want to delete"
+        console.log("Deleting account with ID:", id);  // ← Log the ID
 
-        const { error } = await supabase
-            .from('accounts')
-            .delete()
-            .eq('id', id)
+        try {
+            const { data: account } = await supabase
+                .from('accounts')
+                .select('plaid_item_id')
+                .eq('id', id)
+                .single()
+            // Reset cursor if it's a Plaid account
+            if (account?.plaid_item_id) {
+                await supabase
+                    .from('plaid_items')
+                    .update({ next_cursor: null })
+                    .eq('id', account.plaid_item_id)
+            }
 
-        if (error) {
-            console.error('Delete failed:', error.message)
-            return;
+            const { error } = await supabase
+                .from('accounts')
+                .delete()
+                .eq('id', id)
+
+            if (error) throw error;
+            await refreshData();
+        } catch (error) {
+            console.error("Failed to delete account:", error);
         }
-        refreshData();
-
-    }
-
+    };
 
     const addTransaction = async (newTrans: TransactionInsert) => {
         const { error } = await supabase
@@ -224,6 +270,7 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
             return;
         }
         refreshData()
+
 
 
     }
@@ -261,10 +308,55 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
     }
 
 
+    const addBudget = async (newBudget: BudgetInsert) => {
+        const { error } = await supabase
+            .from('budgets')
+            .insert(newBudget)
+
+        if (error) {
+            console.error('Add Budget failed:', error.message)
+            return;
+        }
+        refreshData()
+    }
+
+    const updateBudget = async ({ id, ...rest }: UpdateBudget) => {
+        if (!id) {
+            console.error('Cannot update budget without an ID')
+            return;
+        }
+        const { error } = await supabase.
+
+            from('budgets')
+            .update(rest)
+            .eq('id', id)
+
+
+        if (error) {
+            console.error('updateBudget failed:', error.message)
+            return;
+        }
+        refreshData()
+    }
+
+    const deleteBudget = async (budgetId: string) => {
+        const { error } = await supabase.
+            from('budgets')
+            .delete()
+            .eq('id', budgetId)
+        if (error) {
+            console.error('deleteBudget failed:', error.message)
+            return;
+        }
+        refreshData()
+    }
+
+
+
     const getAccountById = (id: string | string[] | undefined) => {
         if (!id || Array.isArray(id))
             return undefined;
-        return accounts.find(acc => acc.id === id)
+        return accounts.find(acc => acc.account_id === id)
     }
 
     const getAccountByPlaidId = (plaidAccountId: string) => {
@@ -283,7 +375,7 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
     //         const stringData = JSON.stringify(accountsToSave)
 
     //         // 2. Write it to the phone's disk under a specific name ('storage_key')
-    //         await AsyncStorage.setItem("TRACK_APP_DATA", stringData)
+    //         await AsyncStorage.setItem("Fin_Track_DATA", stringData)
 
 
     //     } catch (e) {
@@ -294,7 +386,7 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
     // const loadAccounts = async () => {
 
     //     // 1. Ask the phone for the data
-    //     const stringData = await AsyncStorage.getItem("TRACK_APP_DATA")
+    //     const stringData = await AsyncStorage.getItem("Fin_Track_DATA")
 
     //     // 2. If it exists, turn it back into an Array. If not, return an empty list []
     //     return stringData ? JSON.parse(stringData) : []
@@ -321,7 +413,25 @@ export const AccountProvider = ({ children }: { children: React.ReactNode }) => 
 
     return (
         /* we 'provide' these three thigns to all the 'children' (the pages) */
-        <AccountContext.Provider value={{ accounts, addAccount, deleteAccount, addTransaction, deleteTrans, getAccountById, getAccountByPlaidId, refreshData, changeMonth, updateTransaction, currentDate, isSyncing }}>
+        <AccountContext.Provider value={{
+            accounts,
+            budgets,
+            addAccount,
+            deleteAccount,
+            addTransaction,
+            deleteTrans,
+            addBudget,
+            deleteBudget,
+            getAccountById,
+            getAccountByPlaidId,
+            refreshData,
+            changeMonth,
+            updateTransaction,
+            updateBudget,
+            currentDate,
+            isSyncing,
+            syncStatus
+        }}>
             {children}
         </AccountContext.Provider>
     )

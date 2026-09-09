@@ -24,7 +24,7 @@ function RootNavigation() {
     <Stack screenOptions={{ headerShown: false }}>
       {/* 2. Each screen must have its own tag */}
       <Stack.Screen name="Login" />
-      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(tabs/)" />
     </Stack>
   )
 }

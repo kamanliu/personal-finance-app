@@ -1,19 +1,30 @@
-import { useFocusEffect } from '@react-navigation/native';
+
+import { PageTitle } from '@/components/ui/PageTitle';
+import { SummaryCard } from '@/components/ui/SummaryCard';
+import { calculateAccountBalance } from '@/utils/calculateAccountBalance';
+import { IconCircle } from '@/utils/IconCircle';
+import { useFocusEffect, } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AccountRow } from '../../components/ui/AccountRow';
 import { Account, useAccounts } from '../../context/AccountContext';
+import { useBalanceSummary } from '../../hook/useBalanceSummary';
+
+
 
 export default function AccountScreen() {
 
   const { accounts, deleteAccount, refreshData } = useAccounts();
+  const [isEditing, setIsEditing] = useState(false);
+
   const router = useRouter();
   useFocusEffect(
-  useCallback(() => {
-    refreshData();
-  }, [])
-);
+    useCallback(() => {
+      refreshData();
+    }, [])
+  );
 
   // groupBytype is a object
   const groupBytype = accounts.reduce((acc, item) => {
@@ -29,76 +40,102 @@ export default function AccountScreen() {
   )
   const displayOrder = Object.keys(groupBytype);
 
-  const balanceSummary = useMemo(() => {
-    return accounts.reduce((accumulator, account) => {
-      const bal = account.balance || 0;
-      
-      if(account.type === 'credit' || account.type === 'loan'){
-        accumulator.liabilities += bal;
-        accumulator.total -= bal;
-      }
-      else {
-        accumulator.assets += bal;
-        accumulator.total += bal;
-      }
-      
-
-      return accumulator
-
-    }, { assets: 0, liabilities: 0, total: 0 })
-  }, [accounts])
-
+  const balanceSummary = useBalanceSummary();
   return (
-    <SafeAreaView style={styles.content_container} >
+    <SafeAreaView >
       <View style={styles.header}>
-        <Text style={styles.header_text}>Accounts</Text>
-        <TouchableOpacity style={styles.button_container} onPress={() => router.push('/AddAccount')}>
-          <Text >+</Text>
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.header}>
-        <Text style={styles.header_text}>Assets</Text>
-        <Text style={styles.header_text}>Liabilities</Text>
-        <Text style={styles.header_text}>Total</Text>
-      </View>
-      <View style={styles.header}>
-        <Text style={styles.header_text}>${balanceSummary.assets.toLocaleString()}</Text>
-        <Text style={styles.header_text}>${balanceSummary.liabilities.toLocaleString()}</Text>
-        <Text style={styles.header_text}>${balanceSummary.total.toLocaleString()}</Text>
-      </View>
+        <PageTitle
+          text1='Accounts'
+         date={new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        />
+        <View style = {{flexDirection:'row'}}>
+          <IconCircle
+            icon='edit'
+            iconSize={20}
+            iconColor='black'
+            iconSet='fontawesomeSix'
+            onButton={() => setIsEditing(!(isEditing))}
+          />
+          <IconCircle
+            icon='plus'
+            iconSize={20}
+            iconColor='black'
+            iconSet='antDesign'
+            onButton={() => router.push('/AddAccount')}
+          />
+        </View>
 
-      <ScrollView style={styles.listAccount} >
+      </View>
+      <SummaryCard
+        text1='Assets'
+        amount1={balanceSummary.assets}
+        text2='Liabilities'
+        amount2={balanceSummary.liabilities}
+        text3='Total'
+        amount3={balanceSummary.total}
+        icon1='income'
+        icon2='expense'
+        icon3='balance'
+      />
 
+      <ScrollView>
         {displayOrder.map((type) => {
           const typeAccounts = groupBytype[type]
           if (!typeAccounts || typeAccounts.length === 0)
             return null
           return (
-            <View key={type} >
-              <Text style={styles.sectionHeader}>{type}</Text>
 
+
+            <View style={styles.listContainer} key={type} >
+              <View style={{ flexDirection: 'row', alignItems: 'center', margin: 5, marginBottom: 6 }}>
+                <IconCircle
+                  categoryType={type}
+                  iconSize={16}
+                />
+                <Text style={{ fontSize: 14, color: '#3a3939', paddingLeft: 5 }}>
+                  {type.charAt(0).toUpperCase() + type.slice(1).toLowerCase()}</Text>
+              </View>
               {typeAccounts.map((item) => (
+                <View style={styles.cardContainer} key={item.id}>
+                  <AccountRow
+                    name={item.name}
+                    balance={
 
-                <View style={styles.listContainer} key={item.id}>
-
-                  <TouchableOpacity onPress={() => router.push({ pathname: '/TransactionList', params: { accountId: item.id } })}>
-                    {/* when you tap a specific item, it passes that specific string to the handler */}
-                    <Text style={styles.textStyle}>  {`${item.name} • ${item.balance}`}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.delete_button} onPress={() => deleteAccount(item.id)}>
-                    <Text >Delete</Text>
-                  </TouchableOpacity>
-
+                      item.source === 'manual' ?
+                        (calculateAccountBalance(item.transactions, item.account_id).total) :
+                        (item.balance || 0)
+                    }
+                    onPress={() => router.push({ pathname: '/TransactionList', params: { accountId: item.account_id } })}
+                    onDelete={() => deleteAccount(item.id)}
+                    accountType={type}
+                    isEditing={isEditing}
+                    color={item.color || 'grey'}
+                  />
                 </View>
+              ))
+              }
 
-              ))}
             </View>
           )
-        })}
-        <TouchableOpacity style={styles.button_container} onPress={() => router.push('/AddTransaction')}>
-          <Text >+</Text>
-        </TouchableOpacity>
+        })
+        }
+
+        <View style={{ padding: 10 }}>
+          <TouchableOpacity
+            onPress={() => router.push('/AddAccount')}
+            style={styles.ButtonStyle}
+          >
+            <IconCircle
+              iconSet='antDesign'
+              iconSize={18}
+              icon='plus'
+              iconColor="#1a56db"
+            />
+            <Text style={{ paddingLeft: 10, color: "#1a56db" }}>Add Account</Text>
+          </TouchableOpacity>
+
+        </View>
       </ScrollView>
     </SafeAreaView>
 
@@ -106,45 +143,45 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  content_container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5, // 4. Space out the text and the "+" button from the edges.
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-
+    justifyContent: 'space-between',
+    paddingRight: 10,
+    paddingHorizontal: 0, // 4. Space out the text and the "+" button from the edges.
   },
   header_text: {
-    fontSize: 16,
-    textAlign: 'center',
-    padding: 10,
+    fontSize: 20,
+    textAlign: 'left',
+    paddingLeft: 10,
+    paddingRight: 10,
     flex: 1,
+    fontWeight: 'bold',
   },
 
-  listAccount: {
-    flex: 1,
-    flexDirection: 'column',
-    padding: 10,
-  },
+
   listContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    margin: 10,
+    marginTop: 0,
+
+  },
+  cardContainer: {
+    backgroundColor: "white",
+    flexDirection: 'column',
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 10,
+
+
   },
 
   button_container: {
-    fontSize: 16,
-
+    padding: 10,
+    borderRadius: 20,
+    backgroundColor: "#1a56db",
     alignItems: 'center',
-    justifyContent: 'center',
-    textAlign: 'right',
-    padding: 10
-
+    justifyContent: 'center'
   },
 
   delete_button: {
@@ -164,6 +201,19 @@ const styles = StyleSheet.create({
 
   textStyle: {
     fontWeight: 'bold',
+  },
+
+  ButtonStyle: {
+    padding: 10,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: "#1b1b1b30",
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+
+
   }
 
 });

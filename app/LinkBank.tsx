@@ -1,14 +1,17 @@
 import { PlaidService } from '@/lib/PlaidService';
 import { supabase } from '@/lib/supabase';
-import { router } from 'expo-router';
+
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
-import { create, dismissLink, LinkIOSPresentationStyle, LinkLogLevel, open } from 'react-native-plaid-link-sdk';
+// @ts-ignore
+import { create, dismissLink, LinkExit, LinkIOSPresentationStyle, LinkLogLevel, LinkSuccess, open } from 'react-native-plaid-link-sdk';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAccounts } from '../context/AccountContext';
 
 export default function LinkBank() {
     const { refreshData } = useAccounts();
+    const { reconnectItemId } = useLocalSearchParams<{ reconnectItemId?: string }>();
     const [link_token, setLinkToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [user_id, setUserId] = useState<string | null>(null);
@@ -21,9 +24,22 @@ export default function LinkBank() {
 
         setIsLoading(true);
         try {
-            // 1. Fetch token on-demand
-            const token = await PlaidService.getLinkToken(user_id);
-            console.log("2. Plaid Link Token:", token);
+            let token: string | null = null;
+
+            if (reconnectItemId) {
+                // RECONNECT FLOW: get an update-mode token for this specific item
+                const { data, error } = await supabase.functions.invoke('create-update-link-token', {
+                    body: { item_id: reconnectItemId }
+                });
+                if (error || !data?.link_token) {
+                    throw new Error(error?.message || "Failed to fetch update link token.");
+                }
+                token = data.link_token;
+            } else {
+                // NORMAL FLOW: brand new bank connection
+                token = await PlaidService.getLinkToken(user_id);
+            }
+            console.log("Plaid Link Token:", token);
 
             if (!token) {
                 throw new Error("Failed to fetch Plaid link token.");
@@ -37,6 +53,18 @@ export default function LinkBank() {
                 open({
                     onSuccess: async (success: LinkSuccess) => {
                         console.log('Success', success);
+                        if (reconnectItemId) {
+                            // Reconnect: just clear the login_required flag, no new token exchange needed
+                            const { error } = await supabase
+                                .from('plaid_items')
+                                .update({ status: 'active' })
+                                .eq('item_id', reconnectItemId);
+
+                            if (error) console.error('Failed to clear status:', error);
+                            await refreshData();
+                            router.back();
+                            return;
+                        }
                         const publicToken = success.publicToken;
                         const institutionName = success.metadata.institution?.name;
 
@@ -73,7 +101,7 @@ export default function LinkBank() {
             console.error("Error during Plaid Link process:", error);
 
             setIsLoading(false); // Turn off loading ONLY if configuration explicitly fails
-        
+
         }
     }
     useEffect(() => {
@@ -123,7 +151,7 @@ export default function LinkBank() {
                     <>
                         <ActivityIndicator size="large" color="#007AFF" />
                         <Text style={{ marginTop: 12, color: '#8E8E93', fontSize: 16 }}>
-                            Opening secure bank connection...
+                            {reconnectItemId ? "Reconnecting your bank..." : "Opening secure bank connection..."}
                         </Text>
                     </>
                 ) : (

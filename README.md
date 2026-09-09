@@ -1,4 +1,4 @@
-# 💰 TrackApp - Personal Finance Dashboard
+# 💰 FinTrack - Personal Finance Dashboard
 
 A React Native app that connects to your bank accounts and gives you a real-time view of your net worth across all institutions. No manual entry, no outdated data.
 

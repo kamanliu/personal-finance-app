@@ -1,19 +1,21 @@
+import { GoBack } from '@/components/ui/GoBackButton';
+import { SelectTypeRow } from '@/components/ui/SelectTypeRow';
+import { IconCircle } from '@/utils/IconCircle';
+import { IconSquare } from '@/utils/IconSquare';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-
 import { FlatList, KeyboardAvoidingView, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Transaction, useAccounts } from '../context/AccountContext';
 import { useAuth } from '../context/AuthContext';
-
+import { expenseCategoryType, incomeCategoryType } from "./constants/categories";
 
 export default function AddTransaction() {
 
     const transactionType = ["Income", "Expense", "Transfer"]
     const [selectedTransType, setSelectedTransType] = useState<string | null>(null)
-    const expenseCategoryType = ["Food", "Grocery", "Transportation", "Telephone", "Subscription"]
-    const incomeCategoryType = ["Salary", "Bonus", "Investment", "Other"]
+
     const [amount, setAmount] = useState('')
     const [note, setNote] = useState<string>('');
     const [date, setDate] = useState(new Date()); //defaults the transaction to "Right Now."
@@ -21,7 +23,7 @@ export default function AddTransaction() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
     // Connecting to the "brain"
-    const { accounts, addTransaction, getAccountById, updateTransaction, getAccountByPlaidId } = useAccounts()
+    const { accounts, addTransaction, getAccountById, updateTransaction, deleteTrans } = useAccounts()
     // pulls in your global list of accounts and the function to save data
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
     const [selectedAccountName, setSelectedAccountName] = useState<string | null>(null);
@@ -33,10 +35,18 @@ export default function AddTransaction() {
 
 
     const [editingTrans, setEditingTrans] = useState<Transaction | null>(null)
+
+    const manualAccounts = accounts.filter(acc => acc.source === 'manual')
+
+    // const getAccountIdForDb = (accountId: string | null) => {
+    //     if(!accountId) return undefined;
+    //     const account = accounts.find(acc => acc.id === accountId);
+    //     return account?.account_id || accountId;
+    // }
     const { transId } = useLocalSearchParams();
     const { user } = useAuth();
     if (!user) {
-        return <Text>Loading user...</Text>; // Or just return null to show a blank screen
+        return <Text style={styles.textStyle}>Loading user...</Text>; // Or just return null to show a blank screen
     }
     console.log("current user id is ", user?.id)
 
@@ -64,22 +74,14 @@ export default function AddTransaction() {
             setAmount(editingTrans.amount.toString())
             setSelectedCategory(editingTrans.category)
             setSelectedAccountId(editingTrans.account_id)
-            setSelectedTargetAccountId(editingTrans.to_account_id)
             setNote(editingTrans.note || '')
-            
-            // handle both manual and plaid accounts
-            if (editingTrans.source === 'plaid') {
-                const plaidAccount = getAccountByPlaidId(editingTrans.account_id)
-                setSelectedAccountId(plaidAccount?.id || '') // Use the account UUID
-            }else{
-                setSelectedAccountId(editingTrans.account_id) // Use the manual account ID
-            }
             setSelectedTargetAccountId(editingTrans.to_account_id)
         } else {
             setDate(new Date())
             setAmount('')
             setSelectedCategory('')
             setSelectedAccountId('')
+            setSelectedTargetAccountId('')
             setNote('')
 
         }
@@ -93,7 +95,7 @@ export default function AddTransaction() {
             alert("Please select a transaction type.")
             return
         }
-        if (!selectedCategory) {
+        if (!selectedCategory && selectedTransType !== "Transfer") {
             alert("Please select a category.")
             return
         }
@@ -122,19 +124,19 @@ export default function AddTransaction() {
 
         }
 
-
+    const finalNote = note || selectedCategory || '';
         try {
             if (editingTrans) {
                 await updateTransaction({
                     id: editingTrans.id,
                     type: selectedTransType as "Income" | "Expense" | "Transfer",
                     user_id: user.id,
-                    account_id: selectedAccountId,
-                    to_account_id: selectedTransType === 'Transfer' ? selectedTargetAccountId : null,
+                    account_id: selectedAccountId || '',
+                    to_account_id: selectedTransType === 'Transfer' ? (selectedTargetAccountId || '') : null,
                     amount: Number(amount) || 0,
                     category: selectedCategory || null,
                     date: date.toISOString(),
-                    note,
+                    note: finalNote,
                     source: 'manual',
                 }
                 )
@@ -143,12 +145,12 @@ export default function AddTransaction() {
                     {
                         type: selectedTransType as "Income" | "Expense" | "Transfer",
                         user_id: user.id,
-                        account_id: selectedAccountId,
-                        to_account_id: selectedTargetAccountId || null,
+                        account_id: selectedAccountId || '',
+                        to_account_id: selectedTransType === 'Transfer' ? (selectedTargetAccountId) || '' : null,
                         amount: Number(amount) || 0,
                         category: selectedCategory || null,
                         date: date.toISOString(),
-                        note,
+                        note: finalNote,
                         source: 'manual',
                     })
 
@@ -174,250 +176,300 @@ export default function AddTransaction() {
 
     return (
         <SafeAreaView>
-            <TouchableOpacity onPress={() => router.back()}><Text>Go Back</Text></TouchableOpacity>
-            <View style={styles.formContainer}>
-                <View style={styles.header}>
-                    {transactionType.map((type) => (
-                        <TouchableOpacity
-                            key={type}
-                            onPress={() => {
-                                setSelectedTransType(type)
-                                setSelectedCategory(null)
-                            }}
-                            style={[
-                                styles.tabButton,
-                                selectedTransType === type && styles.activeTabButton // Compare against the state
-                            ]}
-                        >
-                            <Text>{type}</Text>
-                        </TouchableOpacity>
-                    ))}
+            <GoBack
+                text="Account"
+                onGoBack={() => router.back()}
+            />
+            <View style={styles.container}>
 
-                </View>
+                <SelectTypeRow
+                    transType={transactionType}
+                    currentType={selectedTransType}
+                    onSelectType={(type) => setSelectedTransType(type)}
+                    onSelectCategory={(category) => setSelectedCategory(null)
+                    }
+                    icon
+                />
+
                 <KeyboardAvoidingView >
-                    <View style={styles.form_group}>
-                        <Text style={styles.label}>Date: </Text>
-                        <TouchableOpacity onPress={() => setShowCalendar(true)}>
-                            <Text >{date.toLocaleDateString()}</Text>
-                        </TouchableOpacity>
-                        <Modal
-                            visible={showCalendar}
-                            transparent={true} //so we can see the dimmed background
-                            animationType="slide"
-                        >
-                            <View style={styles.modalOverlay}>
-                                <View style={styles.calendarContainer}>
-                                    <View style={styles.calendarHeader}>
-                                        <Text style={styles.headerTitle}>Date</Text>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                            <TouchableOpacity onPress={() => setDate(new Date())}>
-                                                <Text style={{ color: 'white', marginRight: 20 }}>Today</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity onPress={() => setShowCalendar(false)}>
-                                                <Text style={styles.closeButton}>X</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-
-                                    <DateTimePicker
-                                        value={date}
-                                        mode='date'
-                                        display='inline'
-                                        onChange={(event, selectedDate) => {
-                                            if (selectedDate) setDate(selectedDate)
-                                            setShowCalendar(false)
-                                        }}
-                                    />
-
-                                </View>
-                            </View>
-                        </Modal>
-
-                    </View>
-
-                    <View style={styles.form_group}>
-                        <Text style={styles.label}>Amount: </Text>
-                        <TextInput style={styles.text_input}
-                            value={amount}
-                            keyboardType='numeric'
-                            onChangeText={text => setAmount(text)}>
-
-                        </TextInput>
-                    </View>
-
-
-                    {selectedTransType === "Transfer" ? (
+                    <View style={styles.formContainer}>
                         <View style={styles.form_group}>
-                            <Text style={styles.label}>From: </Text>
-                            <TouchableOpacity onPress={() => setShowAccount(true)}>
-                                <Text>{accounts.find(acc => acc.id === selectedAccountId)?.name || 'Select Account'}</Text>
+                            <Text style={styles.textStyle}>Date: </Text>
+                            <TouchableOpacity style={styles.rowStyle} onPress={() => setShowCalendar(true)}>
+                                <Text style={styles.textStyle}>{date.toLocaleDateString()}</Text>
                             </TouchableOpacity>
+                            <Modal
+                                visible={showCalendar}
+                                transparent={true} //so we can see the dimmed background
+                                animationType="slide"
 
-                            <Modal visible={showAccount} transparent={true} animationType="slide">
+                            >
                                 <View style={styles.modalOverlay}>
                                     <View style={styles.calendarContainer}>
                                         <View style={styles.calendarHeader}>
-                                            <Text style={styles.headerTitle}>Account</Text>
+                                            <Text style={styles.headerTitle}>Date</Text>
                                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                <TouchableOpacity onPress={() => setShowAccount(false)}>
-                                                    <Text style={styles.closeButton}>X</Text>
+                                                <TouchableOpacity onPress={() => setDate(new Date())}>
+                                                    <Text style={{ marginRight: 20 }}>Today</Text>
                                                 </TouchableOpacity>
+                                                <IconCircle
+                                                    icon='close'
+                                                    iconSize={18}
+                                                    iconSet='ionicons'
+                                                    onButton={() => setShowCalendar(false)}
+                                                />
+
                                             </View>
                                         </View>
-                                        <FlatList
-                                            data={accounts}
-                                            keyExtractor={(item) => item.id}
-                                            renderItem={({ item }) => (
-                                                <TouchableOpacity style={styles.row} onPress={() => {
-                                                    setSelectedAccountId(item.id);
-                                                    setSelectedAccountName(item.name);
-                                                    setSelectedCategory(null)
-                                                    setShowAccount(false);
-                                                }}>
-                                                    <Text>{item.name}</Text>
-                                                </TouchableOpacity>
-                                            )}
+
+                                        <DateTimePicker
+                                            value={date}
+                                            mode='date'
+                                            display='inline'
+                                            onChange={(event, selectedDate) => {
+                                                if (selectedDate) setDate(selectedDate)
+                                                setShowCalendar(false)
+                                            }}
                                         />
+
                                     </View>
                                 </View>
                             </Modal>
 
                         </View>
 
-                    ) : (
+
+
                         <View style={styles.form_group}>
-                            <Text style={styles.label}>Category: </Text>
+                            <Text style={styles.textStyle}>Amount: </Text>
+                            <View style={styles.rowStyle} >
+                                <TextInput style={styles.text_input}
+                                    value={amount}
+                                    keyboardType='numeric'
+                                    placeholder="e.g. 10.00"
+                                    onChangeText={text => setAmount(text)}>
 
-                            <TouchableOpacity onPress={() => setShowCategory(true)}>
-                                <Text>{selectedCategory || 'Select Category'}</Text>
-                            </TouchableOpacity>
+                                </TextInput>
+                            </View>
+                        </View>
 
-                            <Modal
-                                visible={showCategory} transparent={true} animationType="slide" >
-                                <View style={styles.modalOverlay}>
-                                    <View style={styles.calendarContainer}>
-                                        <FlatList
-                                            data={selectedTransType === "Income" ? incomeCategoryType : expenseCategoryType}
-                                            renderItem={({ item }) => (
-                                                <TouchableOpacity style={styles.row} onPress={() => {
-                                                    setSelectedCategory(item);
-                                                    setShowCategory(false);
-                                                }}
+
+                        {selectedTransType === "Transfer" ? (
+                            <View style={styles.form_group}>
+                                <Text style={styles.textStyle}>From: </Text>
+                                <TouchableOpacity style={styles.rowStyle} onPress={() => setShowAccount(true)}>
+                                    <Text style={styles.textStyle}>{accounts.find(acc => acc.account_id === selectedAccountId && acc.source === 'manual')?.name || 'Select Account'}</Text>
+                                </TouchableOpacity>
+
+                                <Modal visible={showAccount} transparent={true} animationType="slide">
+                                    <View style={styles.modalOverlay}>
+                                        <View style={styles.listContainer}>
+                                            <View style={styles.calendarHeader}>
+                                                <Text style={styles.headerTitle}>Account</Text>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+
+                                                    <IconCircle
+                                                        icon='close'
+                                                        iconSize={18}
+                                                        iconSet='ionicons'
+                                                        onButton={() => setShowAccount(false)}
+                                                    />
+                                                </View>
+                                            </View>
+                                            <FlatList
+                                                data={manualAccounts}
+                                                keyExtractor={(item) => item.id}
+                                                renderItem={({ item }) => (
+                                                    <TouchableOpacity style={styles.row} onPress={() => {
+                                                        setSelectedAccountId(item.account_id);
+                                                        setSelectedAccountName(item.name);
+                                                        setSelectedCategory(selectedTransType)
+                                                        setShowAccount(false);
+                                                    }}>
+                                                        <IconSquare
+                                                            icon={item.name.charAt(0)}
+                                                            iconSize={16}
+                                                            iconColor={item.color || 'grey'}
+                                                        />
+                                                        <Text style={{ paddingHorizontal: 10 }}>{item.name}</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            />
+                                        </View>
+                                    </View>
+                                </Modal>
+
+                            </View>
+
+                        ) : (
+                            <View style={styles.form_group}>
+                                <Text style={styles.textStyle}>Category: </Text>
+
+                                <TouchableOpacity style={styles.rowStyle} onPress={() => setShowCategory(true)}>
+                                    <Text style={styles.textStyle}>{selectedCategory || 'Select Category'}</Text>
+                                </TouchableOpacity>
+
+                                <Modal
+                                    visible={showCategory} transparent={true} animationType="slide" >
+                                    <View style={styles.modalOverlay}>
+                                        <View style={styles.calendarContainer}>
+
+                                            <View style={styles.calendarHeader}>
+                                                <Text style={styles.textStyle}>Select A Category</Text>
+                                                <IconCircle
+                                                    icon='close'
+                                                    iconSize={18}
+                                                    iconSet='ionicons'
+                                                    onButton={() => setShowCategory(false)}
+                                                />
+                                            </View>
+                                            <View style={[styles.categoryList, { flexDirection: 'row' }]}>
+                                                {(selectedTransType === "Income" ? incomeCategoryType : expenseCategoryType).map((item) =>
+                                                (<TouchableOpacity key={item} style={styles.categoryButton}
+
+                                                    onPress={() => {
+                                                        setSelectedCategory(item);
+                                                        setShowCategory(false);
+                                                    }}
 
                                                 >
-                                                    <Text>{item}</Text>
-                                                </TouchableOpacity>
-                                            )}
-                                            keyExtractor={(item) => item}
-                                        />
+                                                    <Text style={styles.textStyle}>{item}</Text>
+                                                </TouchableOpacity>))}
+                                            </View>
 
+                                        </View>
                                     </View>
-                                </View>
 
-                            </Modal>
-                        </View>
-                    )
+                                </Modal>
+                            </View>
+                        )
 
-                    }
+                        }
 
 
-                    {selectedTransType === "Transfer" ? (
+                        {selectedTransType === "Transfer" ? (
+
+
+                            <View style={styles.form_group}>
+                                <Text style={styles.textStyle}>To: </Text>
+                                <TouchableOpacity style={styles.rowStyle} onPress={() => setShowSelectedTargetAccount(true)}>
+                                    <Text style={styles.textStyle}>{accounts.find(acc => acc.account_id === selectedTargetAccountId)?.name || 'Select Account'}</Text>
+                                </TouchableOpacity>
+
+                                <Modal visible={showSelectedTargetAccount} transparent={true} animationType="slide">
+                                    <View style={styles.modalOverlay}>
+                                        <View style={styles.listContainer}>
+                                            <View style={styles.calendarHeader}>
+                                                <Text style={styles.headerTitle}>Account</Text>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+
+                                                    <IconCircle
+                                                        icon='close'
+                                                        iconSize={18}
+                                                        iconSet='ionicons'
+                                                        onButton={() => setShowSelectedTargetAccount(false)}
+                                                    />
+                                                </View>
+                                            </View>
+                                            <FlatList
+                                                data={manualAccounts}
+                                                keyExtractor={(item) => item.id}
+                                                renderItem={({ item }) => (
+                                                    <TouchableOpacity style={styles.row} onPress={() => {
+                                                        setSelectedTargetAccountId(item.account_id);
+                                                        setSelectedCategory(selectedTransType)
+                                                        setShowSelectedTargetAccount(false);
+                                                    }}>
+                                                        <IconSquare
+                                                            icon={item.name.charAt(0)}
+                                                            iconSize={16}
+                                                            iconColor={item.color || 'grey'}
+                                                        />
+                                                        <Text style={{ paddingHorizontal: 10 }}>{item.name}</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            />
+                                        </View>
+                                    </View>
+                                </Modal>
+
+
+
+
+                            </View>
+                        ) : (
+                            <View style={styles.form_group}>
+                                <Text style={styles.textStyle}>Account: </Text>
+                                <TouchableOpacity style={styles.rowStyle} onPress={() => setShowAccount(true)}>
+                                    <Text style={styles.textStyle}>{accounts.find(acc => acc.account_id === selectedAccountId)?.name || 'Select Account'}</Text>
+                                </TouchableOpacity>
+
+                                <Modal visible={showAccount} transparent={true} animationType="slide">
+                                    <View style={styles.modalOverlay}>
+                                        <View style={styles.listContainer}>
+                                            <View style={styles.calendarHeader}>
+                                                <Text style={styles.headerTitle}>Account</Text>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+
+                                                    <IconCircle
+                                                        icon='close'
+                                                        iconSize={18}
+                                                        iconSet='ionicons'
+                                                        onButton={() => setShowAccount(false)}
+                                                    />
+                                                </View>
+                                            </View>
+                                            <FlatList
+                                                data={manualAccounts}
+                                                keyExtractor={(item) => item.id}
+                                                renderItem={({ item }) => (
+                                                    <TouchableOpacity style={styles.row} onPress={() => {
+
+                                                        setSelectedAccountId(item.account_id);
+                                                        setSelectedAccountName(item.name);
+                                                        setShowAccount(false);
+                                                    }}>
+                                                        <IconSquare
+                                                            icon={item.name.charAt(0)}
+                                                            iconSize={16}
+                                                            iconColor={item.color || 'grey'}
+                                                        />
+                                                        <Text style={{ paddingHorizontal: 10 }}>{item.name}</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            />
+                                        </View>
+                                    </View>
+                                </Modal>
+
+
+
+
+                            </View>
+                        )
+                        }
 
 
                         <View style={styles.form_group}>
-                            <Text style={styles.label}>To: </Text>
-                            <TouchableOpacity onPress={() => setShowSelectedTargetAccount(true)}>
-                                <Text>{accounts.find(acc => acc.id === selectedTargetAccountId)?.name || 'Select Account'}</Text>
-                            </TouchableOpacity>
+                            <Text style={styles.textStyle}>Note: </Text>
+                            <View style={styles.rowStyle}>
+                                <TextInput style={styles.text_input}
+                                    value={note}
+                                    placeholder='e.g. Other'
+                                    onChangeText={text => setNote(text)}>
+                                </TextInput>
 
-                            <Modal visible={showSelectedTargetAccount} transparent={true} animationType="slide">
-                                <View style={styles.modalOverlay}>
-                                    <View style={styles.calendarContainer}>
-                                        <View style={styles.calendarHeader}>
-                                            <Text style={styles.headerTitle}>Account</Text>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                <TouchableOpacity onPress={() => setShowSelectedTargetAccount(false)}>
-                                                    <Text style={styles.closeButton}>X</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                        <FlatList
-                                            data={accounts}
-                                            keyExtractor={(item) => item.id}
-                                            renderItem={({ item }) => (
-                                                <TouchableOpacity style={styles.row} onPress={() => {
-                                                    setSelectedTargetAccountId(item.id);
-                                                    getAccountById(item.id);
-                                                    setSelectedCategory(null)
-                                                    setShowSelectedTargetAccount(false);
-                                                }}>
-                                                    <Text>{item.name}</Text>
-                                                </TouchableOpacity>
-                                            )}
-                                        />
-                                    </View>
-                                </View>
-                            </Modal>
-
-
-
-
+                            </View>
                         </View>
-                    ) : (
-                        <View style={styles.form_group}>
-                            <Text style={styles.label}>Account: </Text>
-                            <TouchableOpacity onPress={() => setShowAccount(true)}>
-                                <Text>{accounts.find(acc => acc.id === selectedAccountId)?.name || 'Select Account'}</Text>
-                            </TouchableOpacity>
+                        <TouchableOpacity style={styles.saveButton} onPress={() => handleSave()}>
+                            <Text style={styles.saveButtonText}>Save</Text>
+                        </TouchableOpacity>
+                        {editingTrans &&
+                            <TouchableOpacity style={styles.saveButton} onPress={() => { deleteTrans(editingTrans.id); router.back() }}>
+                                <Text style={styles.saveButtonText}>Delete</Text>
+                            </TouchableOpacity>}
 
-                            <Modal visible={showAccount} transparent={true} animationType="slide">
-                                <View style={styles.modalOverlay}>
-                                    <View style={styles.calendarContainer}>
-                                        <View style={styles.calendarHeader}>
-                                            <Text style={styles.headerTitle}>Account</Text>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                <TouchableOpacity onPress={() => setShowAccount(false)}>
-                                                    <Text style={styles.closeButton}>X</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                        <FlatList
-                                            data={accounts}
-                                            keyExtractor={(item) => item.id}
-                                            renderItem={({ item }) => (
-                                                <TouchableOpacity style={styles.row} onPress={() => {
-                                                    setSelectedAccountId(item.id);
-                                                    setSelectedAccountName(item.name);
-                                                    setShowAccount(false);
-                                                }}>
-                                                    <Text>{item.name}</Text>
-                                                </TouchableOpacity>
-                                            )}
-                                        />
-                                    </View>
-                                </View>
-                            </Modal>
-
-
-
-
-                        </View>
-                    )
-                    }
-
-
-                    <View style={styles.form_group}>
-                        <Text style={styles.label}>Note: </Text>
-                        <TextInput style={styles.text_input}
-                            value={note}
-                            onChangeText={text => setNote(text)}>
-                        </TextInput>
                     </View>
-                    <TouchableOpacity style={styles.saveButton} onPress={() => handleSave()}>
-                        <Text>Save</Text>
-                    </TouchableOpacity>
-
-
                 </KeyboardAvoidingView >
 
             </View >
@@ -435,76 +487,145 @@ const styles = StyleSheet.create({
         borderBottomWidth: 2,
         borderBottomColor: 'grey',
     },
+    container: {
+        margin: 10,
+        backgroundColor: 'white',
+        borderRadius: 20
+    },
     formContainer: {
-        padding: 20,
+        backgroundColor: 'white',
+        borderRadius: 20,
+        margin: 10
+
     },
     form_group: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 10
+        alignItems: 'center',
+        padding: 10,
+
+
     },
-    label: {
-        marginTop: 20
+
+    rowStyle: {
+
+        alignItems: 'flex-end',
+        padding: 10,
+        backgroundColor: "#f7f8fb",
+        borderRadius: 15,
+        borderColor: "#e7e8eb",
+        borderWidth: 1,
+        width: "70%"
+
+
+    },
+    textStyle: {
+        color: '#3a3a3a',
+        textAlign: 'right'
+
     },
     text_input: {
-        width: 200,
-        height: 40,
-        borderColor: '#bfbfbf',
-        borderWidth: 1,
-        padding: 1
+        borderRadius: 10,
+        color: '#3a3a3a',
+
+
     },
     accountTypeRow: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 20,
     },
-    row: {
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)', // Darkens the rest of the screen
+        justifyContent: 'flex-end', // Pushes the calendar to the bottom
+
+
+    },
+
+    calendarContainer: {
+        padding: 10,
+        backgroundColor: 'white',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        paddingBottom: 50, // extra space for the home indicator
+        minHeight: 300,
+        alignItems: 'center'
+
+    },
+    listContainer: {
+        padding: 10,
+        backgroundColor: 'white',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        paddingBottom: 50, // extra space for the home indicator
+        minHeight: 300,
+
+
+    },
+
+
+    headerTitle: {
+        color: 'Grey',
+        fontSize: 18,
+        fontWeight: 'bold',
+        padding: 10
+    },
+    calendarHeader: {
+
         flexDirection: 'row',
         justifyContent: 'space-between',
+        backgroundColor: "#f2f3f7",       // Black header from photo #2
+        padding: 10,
+        width: "100%",
+        borderRadius: 20,
+        alignItems: 'center'
+
+
+    },
+    row: {
+        flexDirection: 'row',
+
         alignItems: 'center',
         paddingVertical: 15,
         borderBottomWidth: 1,
         borderBottomColor: '#efefef',
         backgroundColor: 'white',
+        padding: 10
     },
-    calendarContainer: {
+
+    categoryList: {
         backgroundColor: 'white',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        paddingBottom: 50, // extra space for the home indicator
-        minHeight: 500,
-    },
-
-    calendarHeader: {
-
-        flexDirection: 'row',
+        padding: 10,
+        flexWrap: 'wrap',
         justifyContent: 'space-between',
-        backgroundColor: '#000',       // Black header from photo #2
-        padding: 15,
-        alignItems: 'center',
+
+
+
+    }
+    ,
+    categoryButton: {
+        backgroundColor: "#f2f3f7",
+        flexDirection: 'row',
+        borderRadius: 20,
+        padding: 10,
+        margin: 5
+
 
     },
 
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)', // Darkens the rest of the screen
-        justifyContent: 'flex-end', // Pushes the calendar to the bottom
-    },
-    headerTitle: {
-        color: 'white',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    closeButton: {
-        color: 'white',
-        fontSize: 20,
-    },
     saveButton: {
-        backgroundColor: '#007AFF',
+        backgroundColor: '#2356fc18',
+
         padding: 15,
         borderRadius: 8,
         marginTop: 20,
         alignItems: 'center',
+    },
+    saveButtonText: {
+        color: '#2356fc',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
     tabButton: {
         paddingVertical: 8,
@@ -514,9 +635,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'transparent',
     },
-    activeTabButton: {
-        backgroundColor: '#FFF',
-        borderColor: '#FF7A5C', // The orange color from your pic
-    },
+
+
+
 }
 )

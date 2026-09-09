@@ -1,81 +1,138 @@
+import { GoBack } from '@/components/ui/GoBackButton';
+import { MonthNavigator } from '@/components/ui/MonthNavigator';
+import Transaction from '@/components/ui/Transaction';
+import { formatDate } from '@/utils/formatDate';
+import { IconCircle } from '@/utils/IconCircle';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, } from 'react-native';
+import { ActivityIndicator, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAccounts } from '../context/AccountContext';
 import { useFilteredTransactions } from '../hook/useFilteredTransactions';
 
+
 export default function TransactionList() {
 
 
-    const { accounts, deleteTrans, getAccountById, currentDate, changeMonth, updateTransaction, getAccountByPlaidId } = useAccounts()
+    const { accounts, getAccountById, currentDate, changeMonth, updateTransaction, getAccountByPlaidId, isSyncing, syncStatus } = useAccounts()
     const { accountId } = useLocalSearchParams();
 
     const selectedAccount = getAccountById(accountId);
     // console.log("the issue is here!");
     // console.log(selectedAccount)
     const { displayTransactions, deposit: deposit, withdrawl: withdrawl, total } = useFilteredTransactions(selectedAccount?.transactions || [], accountId as string, selectedAccount?.account_id ?? undefined);
+
     const router = useRouter();
+    const groupBytype = displayTransactions.reduce((trans, item) => {
+        if (!trans[item.date]) {
+            trans[item.date] = [];
+        }
+
+        trans[item.date].push(item);
+        return trans
+    }, {}
+    )
+
+
+
+    const displayOrder = Object.keys(groupBytype);
+    const sections = displayOrder.map(date => ({
+        title: date,
+        data: groupBytype[date]
+    }));
 
 
     return (
         <SafeAreaView>
-            <TouchableOpacity onPress={() => router.back()}><Text>Go Back</Text></TouchableOpacity>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => changeMonth(-1)}>
-                    <Text>{" < "}</Text>
-                </TouchableOpacity>
-                <Text>{currentDate.toLocaleDateString('default', { month: 'long', year: 'numeric' })}</Text>
-                <TouchableOpacity onPress={() => changeMonth(1)}>
-                    <Text>{" > "}</Text>
-                </TouchableOpacity>
+
+                <GoBack
+                    text="Account"
+                    onGoBack={() => router.back()}
+                />
+                <IconCircle
+                    icon='plus'
+                    iconSize={20}
+                    iconColor='black'
+                    iconSet='antDesign'
+                    onButton={() => router.push('/AddTransaction')}
+                />
             </View>
-            <View style={styles.header}>
-                <Text style={styles.header_text}>Deposit</Text>
-                <Text style={styles.header_text}>Withdrawl</Text>
-                <Text style={styles.header_text}>Total</Text>
-            </View>
-            <View style={styles.header}>
-                <Text style={styles.header_text}>${deposit.toLocaleString()}</Text>
-                <Text style={styles.header_text}>${withdrawl.toLocaleString()}</Text>
-                <Text style={styles.header_text}>${total.toLocaleString()}</Text>
-            </View>
-            <FlatList
-                data={displayTransactions}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
+            <MonthNavigator
+                date={currentDate.toISOString()}
+                onPrevMonth={() => changeMonth(-1)}
+                onNextMonth={() => changeMonth(1)}
+                income={deposit}
+                expense={withdrawl}
+                total={total}
+                showSummary
+            />
+            {sections.length > 0 &&
+                <View style={styles.transactionCard}>
+                    <SectionList
+                        sections={sections}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item }) => (
+                            <View >
+                                {item.type !== "Transfer" ? (
+                                    <Transaction
+                                        label={item.note}
+                                        value={item.amount}
+                                        date={item.date}
+                                        type={item.type}
+                                        category={item.category}
+                                        income={item.type === 'Income'}
 
-                    <View>
-                        <TouchableOpacity onPress={() => router.push({ pathname: '/AddTransaction', params: { transId: item.id } })} >
-                            {item.type !== "Transfer" ? (
+                                        onPress={item.source !== 'plaid' ? () => router.push({ pathname: '/AddTransaction', params: { transId: item.id } }) : undefined}
 
-                                <Text>
-                                    {`${(item.date)?.split('T')[0]} • ${item.type} • ${item.amount} • ${item.category || 'N/A'} • ${item.source === 'plaid'
-                                        ? getAccountByPlaidId(item.account_id)?.name
-                                        : getAccountById(item.account_id)?.name
-                                        || 'Unknown'}`}
-                                </Text>
-                            ) : (
-                                <Text> 
-                                    {`${(item.date)?.split('T')[0]} • ${item.type} • ${item.amount} • ${item.source === 'plaid'
-                                        ? getAccountByPlaidId(item.account_id)?.name
-                                        : getAccountById(item.account_id)?.name
-                                        || 'Unknown'} -> ${item.source === 'plaid'
-                                            ? getAccountByPlaidId(item.to_account_id || '')?.name
-                                            : getAccountById(item.to_account_id || undefined)?.name
-                                        }`}
-                                </Text>
-                            )}</TouchableOpacity>
-                        <TouchableOpacity onPress={() => deleteTrans(item.id)}>
-                            <Text>delete</Text>
-                        </TouchableOpacity>
+                                    />
+                                ) : (
 
-                    </View>
-                )
+                                    <Transaction
+                                        label={`${item.source === 'plaid' ?
+                                            getAccountByPlaidId(item.account_id)?.name
+                                            : getAccountById(item.account_id)?.name
+                                            || 'Unknown'} ➪ ${item.source === 'plaid'
+                                                ? getAccountByPlaidId(item.to_account_id || '')?.name
+                                                : getAccountById(item.to_account_id || undefined)?.name
+                                            }`}
+                                        value={item.amount}
+                                        date={item.date}
+                                        type={item.type}
+                                        category={item.category}
+                                        income={item.type === 'Income'}
+                                        onPress={item.source !== 'plaid' ? () => router.push({ pathname: '/AddTransaction', params: { transId: item.id } }) : undefined}
 
-                } />
-            <TouchableOpacity onPress={() => router.back()}>
-                <Text >Go Back</Text>
-            </TouchableOpacity>
+
+                                    />
+
+                                )}
+                            </View>
+                        )}
+                        renderSectionHeader={({ section }) => (
+                            <View style={{ backgroundColor: '#fff', paddingLeft: 10, borderRadius: 20 }}>
+                                <Text style={{ marginTop: 10, marginLeft: 5 }}>{formatDate(section.title)}</Text>
+                            </View>
+                        )} />
+                </View>}
+
+            {isSyncing && (
+                <View style={styles.syncToast}>
+                    <ActivityIndicator color="#007AFF" size="small" style={{ marginRight: 8 }} />
+                    <Text style={styles.syncText}>
+                        {syncStatus === 'processing'
+                            ? 'Analyzing bank data...'
+                            : 'Connecting to Plaid...'}
+                    </Text>
+                </View>
+            )}
+            {sections.length === 0 && (
+                <View style={{ alignItems: 'center', marginTop: 50 }}>
+                    <Text style={{ fontSize: 16, color: '#6b7280' }}>No transactions found for this month.</Text>
+                </View>
+            )
+
+            }
+
         </SafeAreaView>
     )
 
@@ -83,19 +140,37 @@ export default function TransactionList() {
 
 const styles = StyleSheet.create({
 
+
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 5, // 4. Space out the text and the "+" button from the edges.
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        justifyContent: 'space-between',
+        paddingRight: 10,
+        paddingHorizontal: 0, // 4. Space out the text and the "+" button from the edges.
+    },
+    transactionCard: {
+        backgroundColor: 'white',
+        borderRadius: 20,
+        paddingTop: 5,
+        margin: 12,
+        marginTop: -5,
+        //borderWidth:1,
+        borderColor: '#e1e0e0',
 
     },
-    header_text: {
-        fontSize: 16,
-        textAlign: 'center',
-        padding: 10,
-        flex: 1,
-    }
+    syncToast: {
+        flexDirection: 'row',
+        backgroundColor: '#F2F2F7',
+        padding: 12,
+        margin: 8,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    syncText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#1C1C1E'
+    },
+
 })

@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
   const institution_name = body.institution_name
 
   try {
-    const response = await fetch("https://sandbox.plaid.com/item/public_token/exchange", {
+    const response = await fetch("https://production.plaid.com/item/public_token/exchange", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -50,7 +50,8 @@ Deno.serve(async (req) => {
           user_id: body.user_id,
           access_token: plaidExchangeData.access_token,
           item_id: plaidExchangeData.item_id,
-          institution_name: body.institution_name
+          institution_name: body.institution_name,
+
         },
         { onConflict: 'item_id' })
       .select()
@@ -67,38 +68,11 @@ Deno.serve(async (req) => {
     }
     console.log("Successfully saved plaid_item:", insertedItem.id);
 
-    const accountsResponse = await fetch("https://sandbox.plaid.com/accounts/get", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_id: client_id,
-        secret: secret,
-        access_token: plaidExchangeData.access_token
-      })
-    })
-    const plaidGetAcocunt = await accountsResponse.json()
-    if (!accountsResponse.ok) {
-      throw new Error(`Plaid Error: ${plaidGetAcocunt.error_message || 'Get Account failed'}`)
-    }
-    const accountToInsert = plaidGetAcocunt.accounts.map((acc: any) => ({
-      user_id: user_id,
-      account_id: acc.account_id,
-      plaid_item_id: insertedItem.id,
-      name: acc.name,
-      balance: Number((acc.balances.available ?? acc.balances.current ?? 0).toFixed(2)),
-      type: acc.type,
-      source: 'plaid'
-
-    }))
-    const { error: accountsError } = await supabaseClient
-      .from('accounts')
-      .upsert(accountToInsert, { onConflict: 'account_id' });
-    if (accountsError) throw accountsError;
-
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, message: "Plaid item saved. Sync will create accounts." }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     )
+
   }
   catch (error) {
     const status = error.status || 500;  // 400 - bad request, wrong info sent or 500 - server broke 

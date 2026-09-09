@@ -1,15 +1,19 @@
+import { GoBack } from '@/components/ui/GoBackButton';
+import { SelectAccountTypeRow } from '@/components/ui/SelectAccountTypeRow';
+import { CategoryIcon } from '@/utils/IconCircle';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ModalDropdown from '../components/ModalDropdown';
 import { useAccounts } from '../context/AccountContext';
 import { useAuth } from '../context/AuthContext';
 
 
+
 export default function AddAccount() {
   const accountTypes = ["Cash", "Account", "Card"];
-  const { addAccount } = useAccounts(); // Get the shared function
+  const { addAccount, addTransaction } = useAccounts(); // Get the shared function
   const router = useRouter();
 
   const [name, setName] = useState<string>('');
@@ -20,6 +24,7 @@ export default function AddAccount() {
 
   const [error, setError] = useState<string | null>(null);
   const [isModalVisible, setModalVisible] = useState(true);
+  const [accountColor, setAccountColor] = useState<string | null>(null);
   const { user } = useAuth();
 
 
@@ -47,29 +52,48 @@ export default function AddAccount() {
     }
     if (!user) return;
 
-    await addAccount({
+    const newAccount = await addAccount({
 
       type: selectedType,
       name,
-      balance: Number(amount) || 0,
+      balance: 0,
       user_id: user.id,
-    })
+      source: 'manual',
+      color: accountColor
 
+    });
+
+    if (!newAccount) return;
+    if (Number(amount) > 0) {
+      await addTransaction({
+        type: "Income",
+        user_id: user.id,
+        account_id: newAccount.account_id || newAccount.id,
+        amount: Number(amount) || 0,
+        category: null,
+        date: new Date().toISOString(),
+        note: "Opening Balance",
+        source: 'manual',
+      })
+    }
     // Go back to AccountScreen
 
     router.back()
   }
 
-
+  const colorOptions = ['#1a56db', '#10b981', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899', '#6b7280'];
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView >
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Add Account</Text>
+    <SafeAreaView>
 
+      <KeyboardAvoidingView >
+
+        <View style={styles.header}>
+
+
+          <GoBack
+            text="Account"
+            onGoBack={() => router.back()}
+          />
           <ModalDropdown
             data={accountTypes}
             onSelect={(item) => setSelectedType(item)}
@@ -78,41 +102,66 @@ export default function AddAccount() {
             onClose={() => setModalVisible(false)}
           />
         </View>
-        <ScrollView>
+        <View style={styles.formContainer}>
 
 
-          <View style={styles.formContainer}>
-            <View style={styles.accountTypeRow}>
-              <Text style={styles.label}>Account: </Text>
-              <TouchableOpacity style={styles.accountTypeButton} onPress={() => setModalVisible(true)}>
-                <Text style={styles.accountTypeText}>
-                  {selectedType || 'Select Account Type'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+          <View >
+            <Text style={styles.title}>Account Details</Text>
+            <SelectAccountTypeRow
+              onSelect={() => setModalVisible(true)}
+              type={selectedType || 'Select Account Type'}
+              style={{
+                marginVertical:10,
+                borderWidth: 0,
+                backgroundColor: `${(CategoryIcon[selectedType?.toLocaleLowerCase() || ''] || { iconColor: '#6d6c6c' }).iconColor}18`,
+              }}
+              textColor={(CategoryIcon[selectedType?.toLocaleLowerCase() || ''] || { iconColor: '#6d6d6d' }).iconColor}
+            />
 
+            <Text style={{ color: '#6b7280' }}>Account Name</Text>
             <TextInput
               style={styles.input}
-              placeholder="Account Name"
+              placeholder="e.g. Chequing account, Saving account"
               value={name}
               onChangeText={text => setName(text)}
             />
+            <Text style={{ color: '#6b7280' }}>Amount</Text>
             <TextInput
               style={styles.input}
-              placeholder="Amount"
+              placeholder="e.g. 10.00"
               value={amount}
               keyboardType="numeric"
               onChangeText={text => setAmount(text)}
             />
+            <Text style={{ color: '#6b7280' }}>Account Color</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 }}>
+              {colorOptions.map((color) => (
+                <TouchableOpacity
+                  key={color}
+                  onPress={() => setAccountColor(color)}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: color,
+                    outlineWidth: 2,
+                    outlineOffset: 2,
+                    outlineColor: accountColor === color ? accountColor : 'white',
+                  }}
+                />
+              ))}
+            </View>
+
 
             <TouchableOpacity style={styles.saveButton} onPress={() => handleSave()}>
               <Text style={styles.saveButtonText}>Save</Text>
             </TouchableOpacity>
             {error && <Text style={styles.errorText}>{error}</Text>}
 
+
           </View>
 
-        </ScrollView>
+        </View>
 
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -121,17 +170,11 @@ export default function AddAccount() {
 
 }
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+
 
   header: {
 
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 2,
-    borderBottomColor: 'grey',
   },
   backButton: {
     padding: 10,
@@ -142,21 +185,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    flex: 1,
+
+    fontSize: 20,
+    paddingBottom: 20,
+
   },
   input: {
-    padding: 15, width: '60%',
-    backgroundColor: '#FFF',
-    borderRadius: 60,
-    borderColor: '#C0C0C0',
+    padding: 15,
+    backgroundColor: '#fcfcfc',
+    borderRadius: 15,
+    borderColor: '#efe8e8fd',
     borderWidth: 1,
     marginVertical: 10,
   },
   formContainer: {
+    marginTop: 0,
     padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    margin: 10
+
   },
   accountTypeRow: {
     flexDirection: 'row',
@@ -178,14 +226,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   saveButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#2356fc18',
     padding: 15,
     borderRadius: 8,
     marginTop: 20,
     alignItems: 'center',
   },
   saveButtonText: {
-    color: 'white',
+    color: '#2356fc',
     fontSize: 16,
     fontWeight: 'bold',
   },

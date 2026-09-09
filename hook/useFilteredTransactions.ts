@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
 import { useAccounts } from '../context/AccountContext';
 
-export function useFilteredTransactions(rawTransactions: any[], accountId?: string, plaidAccountId?: string ) {
+export function useFilteredTransactions(rawTransactions: any[], accountId?: string, plaidAccountId?: string, targetDate?: Date) {
   // ? means optional
   const { currentDate } = useAccounts();
+  const dateToUse = targetDate || currentDate;
+  
   const sortedTransactions = useMemo(() => {
     if (!rawTransactions) return {
       displayTransactions: [],
@@ -18,8 +20,8 @@ export function useFilteredTransactions(rawTransactions: any[], accountId?: stri
 
       const transDate = new Date(trans.date || 0)
       const isCorrectMonth =
-        transDate.getMonth() === currentDate.getMonth() &&
-        transDate.getFullYear() === currentDate.getFullYear();
+        transDate.getMonth() === dateToUse.getMonth() &&
+        transDate.getFullYear() === dateToUse.getFullYear();
 
 
       //  a ternary operator (? :), which is like an if/else on one line.
@@ -76,7 +78,7 @@ export function useFilteredTransactions(rawTransactions: any[], accountId?: stri
     };
 
 
-  }, [rawTransactions, currentDate, accountId]) // This only recalculates if the 'accounts' data changes'
+  }, [rawTransactions, dateToUse, accountId]) // This only recalculates if the 'accounts' data changes'
   return sortedTransactions;
 
 }

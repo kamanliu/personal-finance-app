@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     }
 
     const accessToken = data.access_token
-    const response = await fetch("https://sandbox.plaid.com/item/remove", {
+    const response = await fetch("https://production.plaid.com/item/remove", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

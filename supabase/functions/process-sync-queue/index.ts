@@ -10,93 +10,152 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
 const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
 
-
 Deno.serve(async (req) => {
-  // 1. SECURE THE ENDPOINT WITH A SIMPLE CUSTOM KEY
-  const url = new URL(req.url);
-  const secretParam = url.searchParams.get("secret");
-  
-  // Choose any secure phrase you want here
-  const MY_CRON_SECRET = "super_secure_cron_heartbeat_2026"; 
-  // Compares: "Does the secret in the URL match MY_CRON_SECRET?
-  if (secretParam !== MY_CRON_SECRET) {
+  // 🔐 Door 2 Security: Check X-Cron-Secret header
+  const cronSecret = req.headers.get("X-Cron-Secret")
+  const expectedSecret = Deno.env.get("CRON_SECRET")
+
+  if (cronSecret !== expectedSecret) {
+    console.error('❌ Unauthorized cron access attempt')
     return new Response(
-      JSON.stringify({ error: "Unauthorized" }), 
+      JSON.stringify({ error: "Unauthorized" }),
       { status: 401, headers: { "Content-Type": "application/json" } }
-    );
+    )
   }
-  let claimedJob = null;
+
+  console.log('✅ Cron handshake verified')
+
+  const { data: alreadyProcessing, error: processingError } = await supabaseClient
+    .from('sync_queue')
+    .select('id')
+    .eq('status', 'processing')
+    .limit(1)
+    .maybeSingle()
+
+  if (processingError) {
+    console.error('❌ Failed to check processing jobs:', processingError.message)
+    return new Response(
+      JSON.stringify({ error: processingError.message }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    )
+  }
+  if (alreadyProcessing) {
+    console.log('⏳ A job is already being processed. Exiting.')
+    return new Response(
+      JSON.stringify({ message: 'A job is already being processed. Exiting.' }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
+  let claimedJob = null
   try {
+    // find the oldest pending job (do not touch it yet)
+    const { data: pendingJob, error: findError } = await supabaseClient
+      .from('sync_queue')
+      .select('id, item_id')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (findError) throw findError
+    if (!pendingJob) {
+      return new Response(
+        JSON.stringify({ message: 'No jobs in queue' }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    // claim Only that specific row by its id
     const { data: job, error: claimError } = await supabaseClient
       .from('sync_queue')
       .update({ status: 'processing' })
-      .eq('status', 'pending') // only update if status is 'pending'
-      .select('id, item_id')// return to the updated row
-      .limit(1)
-      .maybeSingle() // returns null safely instead of throwing a massive error if the queue is empty
+      .eq('id', pendingJob.id)
+      .eq('status', 'pending') // ensure it's still pending
+      .select()
+      .maybeSingle()
 
-
-    if (claimError) throw claimError;
+    if (claimError) throw claimError
     if (!job) {
-      return new Response(JSON.stringify({ message: 'No jobs' }), { status: 200 })
+      return new Response(
+        JSON.stringify({ message: 'No jobs in queue' }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
     }
-    claimedJob = job;
+    claimedJob = job
+    console.log(`📍 Processing job ${job.id} for item ${job.item_id}`)
 
+    // Look up the user for this plaid item
     const { data: plaidItemData, error: lookUpError } = await supabaseClient
       .from('plaid_items')
       .select('user_id')
       .eq('item_id', claimedJob.item_id)
-      .single()
-
+      .maybeSingle()
 
     if (lookUpError) {
       throw new Error(`Failed to find user: ${lookUpError.message}`)
     }
+    if (!plaidItemData) {
+      throw new Error(`No plaid_items row found for item_id: ${claimedJob.item_id}`)
+    }
 
-
+    // Call sync-transactions for this user
     const { data, error } = await supabaseClient.functions.invoke('sync-transactions', {
       body: { user_id: plaidItemData.user_id }
     })
+
+    // 🛠️ FIX 1: Return early on error (don't fall through to catch block)
     if (error) {
+      console.error(`🔴 Sync failed for job ${claimedJob.id}:`, error.message)
       await supabaseClient
         .from('sync_queue')
-        .update({ status: 'failed', last_error: error.message })
-        .eq('id', claimedJob.id) // mark this job as failed
-      throw new Error(`Internal sync function failed: ${error.message}`)
+        .update({
+          status: 'failed',
+          error: `Sync function failed: ${error.message}`,  // ✅ Correct column name
+          attempts: 1
+        })
+        .eq('id', claimedJob.id)
+
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        { status: 502, headers: { "Content-Type": "application/json" } }
+      )
     }
-    // otherwise
+
+    // Success! Mark as completed
     await supabaseClient
       .from('sync_queue')
-      .update({ status: 'completed' }) // mark job as done
+      .update({ status: 'completed' })
       .eq('id', claimedJob.id)
+
+    console.log(`✅ Job ${claimedJob.id} completed`)
 
     return new Response(
       JSON.stringify({ success: true, message: 'Job processed' }),
-      { headers: { "Content-Type": "application/json" } },
+      { headers: { "Content-Type": "application/json" } }
     )
 
-  } catch (error) {
-    console.error('Queue processor error:', error)
+  } catch (error: any) {
+    console.error('Queue processor error:', error.message)
 
-    // IF WE CLAIMED A JOB BUT THEN CRASHED
+    // 🛠️ FIX 2: Only catches unhandled crashes
     if (claimedJob?.id) {
       await supabaseClient
         .from('sync_queue')
         .update({
           status: 'failed',
-          last_error: `Worker crashed: ${error.message}`
+          error: `Worker crashed: ${error.message}`,  // ✅ Correct column name
+          attempts: 1
         })
-        .eq('id', claimedJob.id) // UNLOCK IT
+        .eq('id', claimedJob.id)
     }
 
+    // 🛠️ FIX 3: Complete response
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     )
   }
-
-
-
 })
 
 

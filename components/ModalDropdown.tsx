@@ -4,18 +4,20 @@ import {
     Modal,
     StyleSheet,
     Text,
-    TouchableOpacity,
-    View,
+    View
 } from "react-native";
+
+import { IconCircle } from '@/utils/IconCircle';
+import { SelectAccountTypeRow } from './ui/SelectAccountTypeRow';
 interface DropdownProps {
-  data: string[];
-  onSelect: (item: string) => void;
-  value: string | null;
-  isVisible: boolean;
-  onClose: () => void; 
-  // this function takes no arguments(doesnt need any information to run)
-  // it's the instruction sent from the parent telling the child how to close
-  // itself (usually by setting isVisible to false)
+    data: string[];
+    onSelect: (item: string) => void;
+    value: string | null;
+    isVisible: boolean;
+    onClose: () => void;
+    // this function takes no arguments(doesnt need any information to run)
+    // it's the instruction sent from the parent telling the child how to close
+    // itself (usually by setting isVisible to false)
 
 }
 const ModalDropdown = ({ data, onSelect, value, isVisible, onClose }: DropdownProps) => {
@@ -27,51 +29,62 @@ const ModalDropdown = ({ data, onSelect, value, isVisible, onClose }: DropdownPr
     // onSelect is a function that "calls home" to ur main page to 
     // that the user pressed smth
 
-    
+
     const handleSelect = (item: string) => {
         // does three things at once when you tap the option
-    onSelect(item);         // tell the main screen wt happened
-    onClose();              // tell the parent to close the modal
-    
+        onSelect(item);         // tell the main screen wt happened
+        onClose();              // tell the parent to close the modal
+
 
     }
 
 
 
-return (
-    <View style = {styles.container}>
+    return (
+        <View style={styles.container}>
 
 
-        <Modal visible = {isVisible} transparent animationType = "slide">
-             {/* a gatekeeper, if the state is true, the mdoal appears
+            <Modal visible={isVisible} transparent animationType="slide">
+                {/* a gatekeeper, if the state is true, the mdoal appears
              transparent: this lets u see the dimmed background behind the pop-up
              animationType = "slide" makes the menu slide up from the buttom */}
-            <View style={styles.modalBackground}>
-             <View style={styles.modalContent}>
-                <FlatList
-                // takes your data array and loops through it.
-                    data = {data}
-                    keyExtractor={(item, index) => index.toString()}
-                    renderItem={({item}) => ( 
-                        // for every item in ur list, it creates a clickable row
-                        <TouchableOpacity style = {styles.option} onPress={() => handleSelect(item)}>
-                             {/* when you tap a specific item, it passes that specific string to the handler */}
-                            <Text style = {styles.optionText}>{item}</Text>
-                        </TouchableOpacity>
-                    )}
-                    />
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                    <Text style={styles.closeText}>Close</Text>
-                </TouchableOpacity>
+                <View style={styles.modalBackground}>
+                    <View style={styles.modalContent}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingBottom:10, alignItems:'center'}}>
+                            <Text style={{fontSize:15}} > Select Account Type</Text>
+                            <IconCircle
+                                icon='close'
+                                iconSize={18}
+                                iconSet='ionicons'
+                                onButton={() => onClose()}
+                            />
+                        </View>
+                        <FlatList
+                            // takes your data array and loops through it.
+                            data={data}
+                            keyExtractor={(item, index) => index.toString()}
+                            renderItem={({ item }) => (
+
+
+                                // for every item in ur list, it creates a clickable row
+
+                                <SelectAccountTypeRow
+                                    onSelect={() => handleSelect(item)}
+                                    type={item}
+                                    style={{marginVertical:5}}
+                                />
+                            )}
+
+                        />
+                    </View>
+                </View>
+            </Modal>
         </View>
-        </View>
-        </Modal>
-    </View>
-)
+    )
 }
 
 const styles = StyleSheet.create({
-    container:{
+    container: {
         margin: 20
     },
     button: {
@@ -79,41 +92,29 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         borderRadius: 5,
     },
-    buttonText: {
-        color: 'black',
-        textAlign: 'center',
-    },
+
     modalBackground: {
         flex: 1,
         backgroundColor: "rgba(0, 0, 0, 0.5)",
         justifyContent: "center",
         alignItems: "center",
     },
-    modalContent:{
-        width: "80%",
+    modalContent: {
+        width: '90%',
         backgroundColor: "white",
         borderRadius: 10,
         padding: 20,
     },
-    option:{
+    option: {
         padding: 15,
         borderBottomWidth: 1,
-        borderBottomColor:  "#ddd",
+        borderBottomColor: "#ddd",
 
     },
-    optionText:{
+    optionText: {
         fontSize: 16,
     },
-    closeButton:{
-        marginTop: 10,
-        padding: 10,
-        backgroundColor: "#e74c3c",
-        borderRadius: 5,
-    },
-    closeText: {
-    color: "white",
-    textAlign: "center",
-  },
+
 })
 
 export default ModalDropdown;
