@@ -1,45 +1,42 @@
 import { GoBack } from '@/components/ui/GoBackButton';
 import { MonthNavigator } from '@/components/ui/MonthNavigator';
-import Transaction from '@/components/ui/Transaction';
-import { formatDate } from '@/utils/formatDate';
+import { groupTransactionsByDate } from '@/utils/groupTransactionsByDate';
 import { IconCircle } from '@/utils/IconCircle';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, SectionList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { TransactionSectionList } from '../components/ui/TransactionSectionList';
 import { useAccounts } from '../context/AccountContext';
 import { useFilteredTransactions } from '../hook/useFilteredTransactions';
+
+
 
 
 export default function TransactionList() {
 
 
     const { accounts, getAccountById, currentDate, changeMonth, updateTransaction, getAccountByPlaidId, isSyncing, syncStatus } = useAccounts()
-    const { accountId } = useLocalSearchParams();
+    const { accountId, category, type } = useLocalSearchParams();
 
     const selectedAccount = getAccountById(accountId);
+
     // console.log("the issue is here!");
     // console.log(selectedAccount)
-    const { displayTransactions, deposit: deposit, withdrawl: withdrawl, total } = useFilteredTransactions(selectedAccount?.transactions || [], accountId as string, selectedAccount?.account_id ?? undefined);
+
+    const allTransactions = accounts.flatMap(acc => acc.transactions || []);
+    const sourceTransactions = selectedAccount ? selectedAccount.transactions : allTransactions;
+const { displayTransactions, deposit, withdrawl, total } = useFilteredTransactions(
+    sourceTransactions || [],
+    {
+        accountId: accountId as string | undefined,
+        plaidAccountId: selectedAccount?.account_id ?? undefined,
+        category: category as string | undefined,
+        transType: type as string | undefined,
+    }
+);
 
     const router = useRouter();
-    const groupBytype = displayTransactions.reduce((trans, item) => {
-        if (!trans[item.date]) {
-            trans[item.date] = [];
-        }
-
-        trans[item.date].push(item);
-        return trans
-    }, {}
-    )
-
-
-
-    const displayOrder = Object.keys(groupBytype);
-    const sections = displayOrder.map(date => ({
-        title: date,
-        data: groupBytype[date]
-    }));
-
+  const sections = groupTransactionsByDate(displayTransactions);
 
     return (
         <SafeAreaView>
@@ -66,54 +63,15 @@ export default function TransactionList() {
                 total={total}
                 showSummary
             />
-            {sections.length > 0 &&
-                <View style={styles.transactionCard}>
-                    <SectionList
-                        sections={sections}
-                        keyExtractor={(item) => item.id}
-                        renderItem={({ item }) => (
-                            <View >
-                                {item.type !== "Transfer" ? (
-                                    <Transaction
-                                        label={item.note}
-                                        value={item.amount}
-                                        date={item.date}
-                                        type={item.type}
-                                        category={item.category}
-                                        income={item.type === 'Income'}
-
-                                        onPress={item.source !== 'plaid' ? () => router.push({ pathname: '/AddTransaction', params: { transId: item.id } }) : undefined}
-
-                                    />
-                                ) : (
-
-                                    <Transaction
-                                        label={`${item.source === 'plaid' ?
-                                            getAccountByPlaidId(item.account_id)?.name
-                                            : getAccountById(item.account_id)?.name
-                                            || 'Unknown'} ➪ ${item.source === 'plaid'
-                                                ? getAccountByPlaidId(item.to_account_id || '')?.name
-                                                : getAccountById(item.to_account_id || undefined)?.name
-                                            }`}
-                                        value={item.amount}
-                                        date={item.date}
-                                        type={item.type}
-                                        category={item.category}
-                                        income={item.type === 'Income'}
-                                        onPress={item.source !== 'plaid' ? () => router.push({ pathname: '/AddTransaction', params: { transId: item.id } }) : undefined}
-
-
-                                    />
-
-                                )}
-                            </View>
-                        )}
-                        renderSectionHeader={({ section }) => (
-                            <View style={{ backgroundColor: '#fff', paddingLeft: 10, borderRadius: 20 }}>
-                                <Text style={{ marginTop: 10, marginLeft: 5 }}>{formatDate(section.title)}</Text>
-                            </View>
-                        )} />
-                </View>}
+            
+             <TransactionSectionList
+                sections={sections}
+                getAccountById={getAccountById}
+                getAccountByPlaidId={getAccountByPlaidId}
+                onPressItem={(item) => item.source !== 'plaid'
+                    ? () => router.push({ pathname: '/AddTransaction', params: { transId: item.id } })
+                    : undefined}
+            />
 
             {isSyncing && (
                 <View style={styles.syncToast}>
@@ -125,14 +83,6 @@ export default function TransactionList() {
                     </Text>
                 </View>
             )}
-            {sections.length === 0 && (
-                <View style={{ alignItems: 'center', marginTop: 50 }}>
-                    <Text style={{ fontSize: 16, color: '#6b7280' }}>No transactions found for this month.</Text>
-                </View>
-            )
-
-            }
-
         </SafeAreaView>
     )
 

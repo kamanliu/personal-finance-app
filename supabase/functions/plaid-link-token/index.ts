@@ -16,7 +16,7 @@ const corsHeaders = {
 // getting Environment Variables 
 const client_id = Deno.env.get("PLAID_CLIENT_ID")
 const secret = Deno.env.get("PLAID_SECRET")
-
+const environment = Deno.env.get("ENVIRONMENT") || "sandbox"
 
 // start listening (happends for every request)
 Deno.serve(async (req) => {
@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     const user_id = body.user_id // get user_id
 
     // STEP 3: Call Plaid (YOUR server → Plaid server)
-    const response = await fetch("https://production.plaid.com/link/token/create", {
+    const response = await fetch(`https://${environment}.plaid.com/link/token/create`, {
       method: "POST", // Plaid always wants POST for method
       headers: {
         "Content-Type": "application/json", // Telling Pliad wt kind of data is coming
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
         country_codes: ['CA', 'US'],
         language: 'en',
         user: { client_user_id: user_id }, // User from frontend, Plaid needs a unique ID for the user
-        "products": [ "transactions"],
+        "products": ["transactions"],
         "webhook": "https://svjigbewalmygfufmvie.supabase.co/functions/v1/plaid-webhook"
 
       })

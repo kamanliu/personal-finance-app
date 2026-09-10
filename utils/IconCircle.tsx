@@ -38,14 +38,15 @@ export const CategoryIcon: Record<string, IconCircleProps> = {
     "card": { icon: 'credit-card', iconColor: "#1a56db", iconSize: 22, iconSet: 'octicons' },
     "account": { icon: 'piggy-bank-outline', iconColor: "#8b5cf6", iconSize: 22, iconSet: 'materialCI' },
     "depository": { icon: 'landmark-dome', iconColor: "#f59e0b", iconSize: 22, iconSet: 'fontawesomeSix' },
-    "bank fees": { icon: 'bank-outline', iconSize: 22, iconSet: 'materialCI', iconColor: "#1032b9" },
+    "bank fees": { icon: 'bank-outline', iconSize: 22, iconSet: 'materialCI', iconColor: "#516fe6" },
     "transfer out": { icon: 'money-bill-transfer', iconSize: 22, iconSet: 'fontawesomeSix', iconColor: "#e92d2d" },
     "transfer in": { icon: 'money-bill-transfer', iconSize: 22, iconSet: 'fontawesomeSix', iconColor: "#f59e0b" },
     "transfer": { icon: 'money-bill-transfer', iconSize: 22, iconSet: 'fontawesomeSix', iconColor: "#f5d20b" },
+    "loan payments": { icon: "cash-refund", iconSize: 22, iconSet: 'materialCI', iconColor: "#dc2626" },
     "food": { icon: "food", iconSize: 22, iconSet: "materialCI", iconColor: "#f9c016" },
     "grocery": { icon: "local-grocery-store", iconSize: 22, iconSet: 'materialIcons', iconColor: "#f97316" },
-    "shopping": { icon: "shopping-cart", iconSize: 22, iconSet: "feather", iconColor: "#8b5cf6" },
-    "INCOME": { icon: 'food-bank', iconSize: 22, iconSet: 'materialIcons', iconColor: "#f59e0b" },
+    "shopping": { icon: "shopping-cart", iconSize: 22, iconSet: "feather", iconColor: "#faa4e7" },
+    "clothing": { icon: "tshirt", iconSize: 22, iconSet: "fontawesomeSix", iconColor: "#f59e0b" },
     "transportation": { icon: "car", iconSize: 22, iconSet: "antDesign", iconColor: "#1a56db" },
     "telephone": { icon: "telephone", iconSize: 22, iconSet: "foundation", iconColor: "#0ba7f5" },
     "housing": { icon: "house-chimney-window", iconSize: 22, iconSet: 'fontawesomeSix', iconColor: "#ef6644" },
@@ -55,7 +56,8 @@ export const CategoryIcon: Record<string, IconCircleProps> = {
     "subscription": { icon: "subscriptions", iconSize: 22, iconSet: 'materialIcons', iconColor: "#db1a44" },
     "utilities": { icon: "tools", iconSize: 22, iconSet: 'fontawesomeFive', iconColor: "#0b80f5" },
     "other": { icon: "archive", iconSize: 22, iconSet: 'entypo', iconColor: "#6b7280" },
-
+  
+    
 }
 
 export function IconCircle({ iconColor, icon, iconSize, iconSet, categoryType, onButton, noBackground,style}: IconCircleProps) {

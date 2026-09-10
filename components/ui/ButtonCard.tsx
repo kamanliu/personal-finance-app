@@ -20,12 +20,12 @@ type ButtonCardProps = {
 }
 
 export function ButtonCard({ onSelect, text1, text2, text3, icon, iconColor, iconSet, disabled, insideButton, insideButtonText, insideIcon, insideIconSet }: ButtonCardProps) {
-
+  const Wrapper = onSelect ? TouchableOpacity : View;    
   const InsideIcon = insideIconSet ? iconSets[insideIconSet] : undefined;
   return (
 
     <View >
-      <TouchableOpacity style={styles.card} onPress={(onSelect)}>
+      <Wrapper style={styles.card} onPress={(onSelect)}>
         <View style={{ flexDirection: 'row' }}>
           {icon && iconSet && (
             <IconCircle icon={icon} iconSet={iconSet} iconColor={iconColor} iconSize={22} />
@@ -38,7 +38,7 @@ export function ButtonCard({ onSelect, text1, text2, text3, icon, iconColor, ico
         </View>
 
         <Text style={{ fontSize: 20 }}>{text3}</Text>
-      </TouchableOpacity >
+      </Wrapper >
       {insideButton && (
         <TouchableOpacity
           onPress={insideButton}

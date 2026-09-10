@@ -11,15 +11,15 @@ type StatCardProps = {
     icon: string;
     percentage: string;
     isPositive: boolean;
+        trendUp?: boolean;
     iconColor?: string;
 };
 
-export function StatCard({ label, value, icon, percentage, isPositive, iconSet, iconColor }: StatCardProps) {
-    const arrowIconName = isPositive ? "trending-up" : "trending-down";
+export function StatCard({ label, value, icon, percentage, isPositive, iconSet, trendUp, iconColor }: StatCardProps) {
+    const arrowIconName = (trendUp ?? isPositive) ? "trending-up" : "trending-down";
     const arrowColor = isPositive ? "#10b981" : "#ef4444";
 
-
-    return (
+  return (
         <View style={styles.card}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <IconCircle icon={icon} iconSet={iconSet} iconColor={iconColor} iconSize={22} />
@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     amountStyle: {
            
         fontWeight: 'bold',
-        fontSize: 25,
+        fontSize: 24,
         letterSpacing:0.5
     },
     card: {

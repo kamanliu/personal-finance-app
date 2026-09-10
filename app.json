@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "FinTrack",
-    "slug": "FinTrack",
+    "name": "TrackApp",
+    "slug": "trackapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "FinTrack",
+    "scheme": "trackapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.FinTrack"
+      "bundleIdentifier": "com.anonymous.TrackApp"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +21,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.FinTrack"
+      "package": "com.anonymous.TrackApp"
     },
     "web": {
       "output": "static",

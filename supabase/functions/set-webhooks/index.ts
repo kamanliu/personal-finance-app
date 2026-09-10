@@ -9,7 +9,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
-
+const environment = Deno.env.get("ENVIRONMENT") || "sandbox"
 const client_id = Deno.env.get("PLAID_CLIENT_ID")!
 const secret = Deno.env.get("PLAID_SECRET")!
 
@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
   const results = []
 
   for (const item of items) {
-    const response = await fetch("https://production.plaid.com/item/webhook/update", {
+    const response = await fetch(`https://${environment}.plaid.com/item/webhook/update`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -1,12 +1,12 @@
 
 import { MonthNavigator } from '@/components/ui/MonthNavigator';
 import { formatCurrency } from '@/utils/formatCurrency';
-import { formatDate } from '@/utils/formatDate';
+import { groupTransactionsByDate } from '@/utils/groupTransactionsByDate';
 import { useRouter } from 'expo-router';
-import { SectionList, StyleSheet, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatCard } from '../../components/ui/StatCard';
-import Transaction from '../../components/ui/Transaction';
+import { TransactionSectionList } from '../../components/ui/TransactionSectionList';
 import { useAccounts } from '../../context/AccountContext';
 import { useBalanceSummary } from '../../hook/useBalanceSummary';
 import { useFilteredTransactions } from '../../hook/useFilteredTransactions';
@@ -23,7 +23,7 @@ export default function Home() {
   const lastMonthDate = new Date(currentDate);
   lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
   const thisMonth = useFilteredTransactions(allTransactions);
-  const lastMonth = useFilteredTransactions(allTransactions, undefined, undefined, lastMonthDate);
+  const lastMonth = useFilteredTransactions(allTransactions, { targetDate: lastMonthDate });
   console.log('currentDate:', currentDate, 'lastMonthDate:', lastMonthDate);
 
   const netWorthChangePercent = calculateChange(balanceSummary.total, (balanceSummary.total - (lastMonth.deposit - lastMonth.withdrawl)));
@@ -51,29 +51,17 @@ export default function Home() {
   }
 
   console.log('thisMonth income:', thisMonth.deposit, 'lastMonth income:', lastMonth.deposit, 'result:', incomeChangePercent);
-  const groupBytype = displayTransactions.reduce((trans, item) => {
-    if (!trans[item.date]) {
-      trans[item.date] = [];
-    }
+  const sections = groupTransactionsByDate(displayTransactions);
 
-    trans[item.date].push(item);
-    return trans
-  }, {}
-  )
-  const displayOrder = Object.keys(groupBytype);
-  const sections = displayOrder.map(date => ({
-    title: date,
-    data: groupBytype[date]
-  }));
   const router = useRouter();
 
 
   return (
     <SafeAreaView >
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 5, padding: 8 }}>
-        <StatCard label="Net Worth" value={formatCurrency(balanceSummary.assets)} icon="wallet-outline" iconSet="ionicons" percentage={`${1}%`} isPositive iconColor="#1a56db" />
+        <StatCard label="Net Worth" value={formatCurrency(balanceSummary.assets)} icon="wallet-outline" iconSet="ionicons" percentage={`${netWorthChangePercent.percentChange?.toFixed(1)}%`} isPositive={netWorthChangePercent.isPositive} iconColor="#1a56db" />
         <StatCard label="Monthly Income" value={formatCurrency(income)} icon="arrow-up-right" iconSet="feather" percentage={`${(incomeChangePercent.percentChange)?.toFixed(1)}%`} isPositive={incomeChangePercent.isPositive} iconColor="#10b981" />
-        <StatCard label="Monthly Expenses" value={formatCurrency(expense)} icon="arrow-down-left" iconSet="feather" percentage={`${(expenseChangePercent.percentChange)?.toFixed(1)}%`} isPositive={expenseChangePercent.isPositive} iconColor="#ef4444" />
+        <StatCard label="Monthly Expenses" value={formatCurrency(expense)} icon="arrow-down-left" iconSet="feather" percentage={`${(expenseChangePercent.percentChange)?.toFixed(1)}%`} trendUp={expenseChangePercent.isPositive} isPositive={!expenseChangePercent.isPositive} iconColor="#ef4444" />
         <StatCard label="Saving Rate" value={`${(savingsRate).toFixed(1)}%`} icon="piggy-bank-outline" iconSet="materialCI" percentage={`${(savingsRateChangePercent)?.toFixed(1)}%`} isPositive={savingsRateChangePercent >= 0} iconColor="#8b5cf6" />
       </View>
 
@@ -86,59 +74,13 @@ export default function Home() {
         total={total}
         showSummary
       />
-      {sections.length > 0 &&
-        <View style={styles.transactionCard}>
-          <SectionList
-            sections={sections}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View >
-                {item.type !== "Transfer" ? (
-                  <Transaction
-                    label={item.note}
-                    value={item.amount}
-                    date={item.date}
-                    type={item.type}
-                    category={item.category}
-                    income={item.type === 'Income'}
-                    onPress={() => router.push({ pathname: '/AddTransaction', params: { transId: item.id } })}
+      <TransactionSectionList
+        sections={sections}
+        getAccountById={getAccountById}
+        getAccountByPlaidId={getAccountByPlaidId}
+        onPressItem={(item) => () => router.push({ pathname: '/AddTransaction', params: { transId: item.id } })}
+      />
 
-                  />
-                ) : (
-
-                  <Transaction
-                    label={`${item.source === 'plaid'
-                      ? getAccountByPlaidId(item.account_id)?.name
-                      : getAccountById(item.account_id)?.name
-                      || 'Unknown'} ➪ ${item.source === 'plaid'
-                        ? getAccountByPlaidId(item.to_account_id || '')?.name
-                        : getAccountById(item.to_account_id || undefined)?.name
-                      }`}
-                    value={item.amount}
-                    date={item.date}
-                    type={item.type}
-                    category={item.category}
-                    income={item.type === 'Income'}
-                    onPress={() => router.push({ pathname: '/AddTransaction', params: { transId: item.id } })}
-
-                  />
-
-                )}
-              </View>
-            )}
-            renderSectionHeader={({ section }) => (
-              <View style={{ backgroundColor: '#fff', paddingLeft: 10, borderRadius: 20 }}>
-                <Text style={{ marginTop: 10, marginLeft: 5 }}>{formatDate(section.title)}</Text>
-              </View>
-            )} />
-        </View>}
-      {sections.length === 0 && (
-        <View style={{ alignItems: 'center', marginTop: 50 }}>
-          <Text style={{ fontSize: 16, color: '#6b7280' }}>No transactions found for this month.</Text>
-        </View>
-      )
-
-      }
 
     </SafeAreaView>
 
@@ -146,18 +88,3 @@ export default function Home() {
 
 }
 
-const styles = StyleSheet.create({
-
-  transactionCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    paddingTop: 5,
-    margin: 12,
-    marginTop: -5,
-    //borderWidth:1,
-    borderColor: '#e1e0e0'
-
-
-  }
-
-})

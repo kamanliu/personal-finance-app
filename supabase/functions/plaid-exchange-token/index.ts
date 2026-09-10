@@ -13,6 +13,7 @@ const corsHeaders = {
 }
 const client_id = Deno.env.get("PLAID_CLIENT_ID")
 const secret = Deno.env.get("PLAID_SECRET")
+const environment = Deno.env.get("ENVIRONMENT") || "sandbox"
 const supabaseUrl = Deno.env.get("SUPABASE_URL")
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
 const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
@@ -28,7 +29,7 @@ Deno.serve(async (req) => {
   const institution_name = body.institution_name
 
   try {
-    const response = await fetch("https://production.plaid.com/item/public_token/exchange", {
+    const response =  await fetch(`https://${environment}.plaid.com/item/public_token/exchange`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

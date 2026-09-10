@@ -5,7 +5,7 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
+import { normalizePlaidCategory } from '../_shared/normalizePlaidCategory.ts'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -17,7 +17,7 @@ const secret = Deno.env.get("PLAID_SECRET")
 const supabaseUrl = Deno.env.get("SUPABASE_URL")
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
 const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
-
+const environment = Deno.env.get("ENVIRONMENT") || "sandbox"
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
         let accountsToUpsert: any[] = []
 
         while (hasMore) {
-          const response = await fetch("https://production.plaid.com/transactions/sync", {
+          const response = await fetch(`https://${environment}.plaid.com/transactions/sync`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
           if (removed) allRemovedIds.push(...removed.map((t: any) => t.transaction_id))
 
           if (!plaidAccounts || plaidAccounts.length == 0) {
-            const accountResponse = await fetch("https://production.plaid.com/accounts/balance/get", {
+            const accountResponse = await fetch(`https://${environment}.plaid.com/accounts/balance/get`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
               // 2. Turn the amount into a clean, absolute positive number for the database
               amount: Math.abs(plaidTx.amount),
               date: plaidTx.date,
-              category: plaidTx.personal_finance_category?.primary ?? 'General',
+              category: normalizePlaidCategory(plaidTx.personal_finance_category?.primary ?? 'GENERAL_MERCHANDISE'),
               pending: plaidTx.pending,
               plaid_transaction_id: plaidTx.transaction_id,
               source: 'plaid',

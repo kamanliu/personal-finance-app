@@ -1,11 +1,19 @@
 import { useMemo } from 'react';
+import { normalizeCategory } from '../app/constants/categories';
 import { useAccounts } from '../context/AccountContext';
 
-export function useFilteredTransactions(rawTransactions: any[], accountId?: string, plaidAccountId?: string, targetDate?: Date) {
+export function useFilteredTransactions(rawTransactions: any[], options?: {
+    accountId?: string;
+    plaidAccountId?: string;
+    targetDate?: Date;
+    category?: string;
+    transType?: string;
+}) {
+      const { accountId, plaidAccountId, targetDate, category, transType } = options || {};
   // ? means optional
   const { currentDate } = useAccounts();
   const dateToUse = targetDate || currentDate;
-  
+
   const sortedTransactions = useMemo(() => {
     if (!rawTransactions) return {
       displayTransactions: [],
@@ -31,7 +39,18 @@ export function useFilteredTransactions(rawTransactions: any[], accountId?: stri
         : trans.account_id === accountId || trans.account_id === plaidAccountId)
         : true;
       //console.log('Transaction:', trans.id, 'Type:', trans.type, 'From:', trans.account_id, 'To:', trans.to_account_id, 'AccountId:', accountId, 'Passes:', isCorrectMonth && isCorrectAccount);
-      return isCorrectMonth && isCorrectAccount
+
+
+
+   const isCorrectType = transType ? trans.type === transType : true;
+const isCorrectCategory = category
+    ? normalizeCategory(trans.category, transType || trans.type) === category
+    : true;
+
+return isCorrectMonth && isCorrectAccount && isCorrectType && isCorrectCategory
+
+
+
     })
     // sort the merges list by date (descending: newest first)
 
@@ -78,7 +97,7 @@ export function useFilteredTransactions(rawTransactions: any[], accountId?: stri
     };
 
 
-  }, [rawTransactions, dateToUse, accountId]) // This only recalculates if the 'accounts' data changes'
+  }, [rawTransactions, dateToUse, accountId, category, transType]) // This only recalculates if the 'accounts' data changes'
   return sortedTransactions;
 
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { IconCircle } from '@/utils/IconCircle';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ButtonCard } from '../../components/ui/ButtonCard';
 import { useAccounts } from '../../context/AccountContext';
@@ -165,7 +166,12 @@ export default function more() {
   return (
     <SafeAreaView style={{ padding: 10 }}>
 
-        <View >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <IconCircle
+          iconSet='ionicons'
+          icon='settings-outline'
+          iconSize={20}
+          iconColor='#1a56db'/>
           <Text style={{ fontSize: 22, fontWeight: 'bold' }}>
             Account Settings
           </Text>
@@ -200,7 +206,13 @@ export default function more() {
         <View style={styles.cardContainer}>
           <Text style={styles.headerText} >CONNECTED BANKS</Text>
           {connectedBanks.length === 0 ? (
-            <Text style={{ color: '#999' }}>No banks connected yet</Text>
+            
+            <ButtonCard
+            iconSet={"ionicons"}
+            icon={"unlink"}
+              text1={"No banks connected yet"}
+              text2={"Connect a bank to start syncing transactions"}
+            /> 
           ) : (
             <View>
               {connectedBanks.map(bank => {
@@ -223,7 +235,6 @@ export default function more() {
                       iconColor={"#10b981"}
                       text1={bank.institution_name}
                       text2={`${accountsUnderBank.length} account${accountsUnderBank.length !== 1 ? 's' : ''} connected`}
-                      text3={'⟩'}
                       insideButton={() => confirmDisconnect(bank.item_id)}
                       insideButtonText={"Disconnect"}
                       insideIconSet={"antDesign"}
@@ -247,7 +258,7 @@ export default function more() {
             text1={"Notifications"}
             text2={"Budget alerts and weekly summaries"}
             text3={'⟩'}
-            onSelect={() => router.push('/LinkBank')}
+            
 
           />
           <ButtonCard
@@ -257,7 +268,7 @@ export default function more() {
             text1={"Currency"}
             text2={"CAD — Canadian Dollar"}
             text3={'⟩'}
-            onSelect={() => router.push('/LinkBank')}
+            
           />
 
           <ButtonCard
@@ -267,7 +278,7 @@ export default function more() {
             text1={"Privacy & Security"}
             text2={"Biometrics, PIN, data export"}
             text3={'⟩'}
-            onSelect={() => router.push('/LinkBank')}
+
           />
 
         </View>

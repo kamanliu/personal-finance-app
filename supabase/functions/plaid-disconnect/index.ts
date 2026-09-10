@@ -16,6 +16,7 @@ const secret = Deno.env.get("PLAID_SECRET")
 const supabaseUrl = Deno.env.get("SUPABASE_URL")
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
 const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
+const environment = Deno.env.get("ENVIRONMENT") || "sandbox"
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -51,7 +52,7 @@ Deno.serve(async (req) => {
     }
 
     const accessToken = data.access_token
-    const response = await fetch("https://production.plaid.com/item/remove", {
+  const response = await fetch(`https://${environment}.plaid.com/item/remove`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

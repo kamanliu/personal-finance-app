@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AccountRow } from '../../components/ui/AccountRow';
 import { Account, useAccounts } from '../../context/AccountContext';
 import { useBalanceSummary } from '../../hook/useBalanceSummary';
+import { normalizeAccountType } from '../../utils/normalizeAccountType';
 
 
 
@@ -28,16 +29,15 @@ export default function AccountScreen() {
 
   // groupBytype is a object
   const groupBytype = accounts.reduce((acc, item) => {
-    if (!acc[item.type]) {
-      acc[item.type] = [];
+     const normalizedType = normalizeAccountType(item.type);
+    if (!acc[normalizedType]) {
+        acc[normalizedType] = [];
     }
-
-    acc[item.type].push(item);
+    acc[normalizedType].push(item);
     return acc
-  }, {} as Record<string, Account[]>
+}, {} as Record<string, Account[]>)
     // telling typescript that im create piles where label is
     // a string and the contents are arrays of strings
-  )
   const displayOrder = Object.keys(groupBytype);
 
   const balanceSummary = useBalanceSummary();
@@ -110,7 +110,7 @@ export default function AccountScreen() {
                     onDelete={() => deleteAccount(item.id)}
                     accountType={type}
                     isEditing={isEditing}
-                    color={item.color || 'grey'}
+                   color={item.color ?? undefined}
                   />
                 </View>
               ))

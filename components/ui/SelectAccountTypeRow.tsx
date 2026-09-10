@@ -52,7 +52,7 @@ export function SelectAccountTypeRow({ onSelect, type, style, textColor, note, t
                     {textColor ?
                         <View style={{ backgroundColor: 'white', borderRadius: 15, padding: 7 }}>
                             <Text style={{ fontSize: 15, color: '#6b7280' }}>Change</Text></View>
-                        : <Text style={{ justifyContent:'center',fontSize: 20, color: '#6b7280' }}>{text3 || '⟩'}</Text>}
+                        : <Text style={{ justifyContent:'center',fontSize: 17, color: '#25282c' }}>{text3 || '⟩'}</Text>}
                 </View>
             {children && <View style={{ marginTop: 10 }}>{children}</View>}
             </View>

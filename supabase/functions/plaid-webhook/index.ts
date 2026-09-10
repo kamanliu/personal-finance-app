@@ -14,7 +14,7 @@ import { decode, verify } from "https://deno.land/x/djwt@v3.0.2/mod.ts"
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
-
+const environment = Deno.env.get("ENVIRONMENT") || "sandbox"
 const client_id = Deno.env.get("PLAID_CLIENT_ID")!
 const secret = Deno.env.get("PLAID_SECRET")
 
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
 
       if (!keyId) throw new Error("Invalid JWT header formatting: missing key ID (kid)")
 
-      const response = await fetch("https://production.plaid.com/webhook/verification_key/get", {
+      const response = await fetch(`https://${environment}.plaid.com/webhook/verification_key/get`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

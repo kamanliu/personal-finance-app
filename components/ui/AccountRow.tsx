@@ -28,7 +28,9 @@ type AccountRowProps = {
 
 export function AccountRow({ name, balance, onDelete, onPress, accountType, isEditing, color }: AccountRowProps) {
   const categoryIcon: Record<string, { iconColor: string }> = {
-        "depository": { iconColor: "#1a56db" },
+        "depository": { iconColor: "#f89634" },
+        "card": { iconColor: color ? color : "#2561fa" },
+        
     }
     const matched = categoryIcon[accountType?.toLocaleLowerCase() || ''] || { iconColor: color || "#5cd7f6" }
 
