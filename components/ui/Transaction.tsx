@@ -19,7 +19,7 @@ type TransactionProps = {
 
 export default function Transaction({ label, value, date, type, category, income, onPress }: TransactionProps) {
 
-    
+
     const formatWord = formatCategory(category)
     const Wrapper = onPress ? TouchableOpacity : View;
 
@@ -27,13 +27,13 @@ export default function Transaction({ label, value, date, type, category, income
 
         <Wrapper onPress={onPress} >
             <View style={styles.trans}>
-                    <IconCircle
-                                   categoryType={formatWord}
-                                   iconSize={22}
-                               />
-               
+                <IconCircle
+                    categoryType={formatWord}
+                    iconSize={22}
+                />
+
                 <View style={{ flexDirection: 'column', marginLeft: 10, flex: 1 }}>
-                    <Text style={styles.textStyle}>{label}</Text>
+                    <Text style={styles.textStyle} numberOfLines={1} >{label}</Text>
                     <Text style={{ color: '#6b7280' }}>{`${formatWord}`}</Text>
 
                 </View>
@@ -49,15 +49,15 @@ const styles = StyleSheet.create({
     textStyle: {
         fontWeight: 'bold',
         fontSize: 15,
-        paddingBottom: 5
+        paddingBottom: 5,
+        flexShrink: 1,
     },
     amountStyle: {
 
         paddingBottom: 5,
-        
-        fontSize: 15, 
+        fontSize: 15,
         fontWeight: 'bold',
-        
+
 
     },
     trans: {

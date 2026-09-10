@@ -25,3 +25,15 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 *.log
+
+# Editor / IDE
+.vscode/
+.cursor/
+.idea/
+
+# Supabase
+supabase/.temp/
+supabase/functions/**/node_modules/
+
+# TypeScript
+*.tsbuildinfo

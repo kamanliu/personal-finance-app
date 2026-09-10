@@ -43,6 +43,7 @@ export const CategoryIcon: Record<string, IconCircleProps> = {
     "transfer in": { icon: 'money-bill-transfer', iconSize: 22, iconSet: 'fontawesomeSix', iconColor: "#f59e0b" },
     "transfer": { icon: 'money-bill-transfer', iconSize: 22, iconSet: 'fontawesomeSix', iconColor: "#f5d20b" },
     "loan payments": { icon: "cash-refund", iconSize: 22, iconSet: 'materialCI', iconColor: "#dc2626" },
+    "loan": { icon: "cash-refund", iconSize: 22, iconSet: 'materialCI', iconColor: "#dc2626" },
     "food": { icon: "food", iconSize: 22, iconSet: "materialCI", iconColor: "#f9c016" },
     "grocery": { icon: "local-grocery-store", iconSize: 22, iconSet: 'materialIcons', iconColor: "#f97316" },
     "shopping": { icon: "shopping-cart", iconSize: 22, iconSet: "feather", iconColor: "#faa4e7" },
