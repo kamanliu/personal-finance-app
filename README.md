@@ -21,9 +21,7 @@ A React Native app that connects to your bank accounts and gives you a real-time
     <td align="center"><b>Login</b></td>
   </tr>
   <tr>
-    <td><img src="./screenshots/budget1.png" width="250"/></td>
-    <td><img src="./screenshots/budget2.png" width="250"/></td>
-    <td><img src="./screenshots/budget4.png" width="250"/></td>
+    <td><img src="./screenshots/budget.png" width="250"/></td>
     <td><img src="./screenshots/add-transaction.png" width="250"/></td>
     <td><img src="./screenshots/login.png" width="250"/></td>
   </tr>
