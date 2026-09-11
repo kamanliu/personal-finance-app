@@ -5,7 +5,7 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 const _Layout = () => {
     const router = useRouter();
     const pathname = usePathname();
-  const showFab = ['/', '/account', '/TransactionList'].includes(pathname);
+  const showFab = ['/', '/account'].includes(pathname);
     return (
         <View style={{ flex: 1 }}>
             <Tabs>

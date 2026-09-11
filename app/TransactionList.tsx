@@ -2,8 +2,9 @@ import { GoBack } from '@/components/ui/GoBackButton';
 import { MonthNavigator } from '@/components/ui/MonthNavigator';
 import { groupTransactionsByDate } from '@/utils/groupTransactionsByDate';
 import { IconCircle } from '@/utils/IconCircle';
+import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TransactionSectionList } from '../components/ui/TransactionSectionList';
 import { useAccounts } from '../context/AccountContext';
@@ -25,21 +26,21 @@ export default function TransactionList() {
 
     const allTransactions = accounts.flatMap(acc => acc.transactions || []);
     const sourceTransactions = selectedAccount ? selectedAccount.transactions : allTransactions;
-const { displayTransactions, deposit, withdrawl, total } = useFilteredTransactions(
-    sourceTransactions || [],
-    {
-        accountId: accountId as string | undefined,
-        plaidAccountId: selectedAccount?.account_id ?? undefined,
-        category: category as string | undefined,
-        transType: type as string | undefined,
-    }
-);
+    const { displayTransactions, deposit, withdrawl, total } = useFilteredTransactions(
+        sourceTransactions || [],
+        {
+            accountId: accountId as string | undefined,
+            plaidAccountId: selectedAccount?.account_id ?? undefined,
+            category: category as string | undefined,
+            transType: type as string | undefined,
+        }
+    );
 
     const router = useRouter();
-  const sections = groupTransactionsByDate(displayTransactions);
+    const sections = groupTransactionsByDate(displayTransactions);
 
     return (
-        <SafeAreaView>
+        <SafeAreaView style={{ flex: 1 }}>
             <View style={styles.header}>
 
                 <GoBack
@@ -63,8 +64,8 @@ const { displayTransactions, deposit, withdrawl, total } = useFilteredTransactio
                 total={total}
                 showSummary
             />
-            
-             <TransactionSectionList
+
+            <TransactionSectionList
                 sections={sections}
                 getAccountById={getAccountById}
                 getAccountByPlaidId={getAccountByPlaidId}
@@ -83,6 +84,14 @@ const { displayTransactions, deposit, withdrawl, total } = useFilteredTransactio
                     </Text>
                 </View>
             )}
+
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => router.push('/AddTransaction')}
+                activeOpacity={0.85}
+            >
+                <Feather name="plus" size={26} color="white" />
+            </TouchableOpacity>
         </SafeAreaView>
     )
 
@@ -121,6 +130,22 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '500',
         color: '#1C1C1E'
+    },
+    fab: {
+        position: 'absolute',
+        right: 20,
+        bottom: 30,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#1a56db',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 6,
     },
 
 })
