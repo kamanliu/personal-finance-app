@@ -4,9 +4,13 @@ A React Native app that connects to your bank accounts and gives you a real-time
 
 ## Demo
 
+*No install required — this GIF shows the full flow end-to-end.*
+
 <img src="./screenshots/demo.gif" width="300" />
 
-*Login → Home dashboard  → Stats/Budget → Accounts → Link Bank (Plaid Sandbox)*
+*Login → Home dashboard → Accounts → Stats/Budget → Link Bank (Plaid Sandbox)*
+
+For developers who want to run the project locally, see [How to Run](#how-to-run) below.
 
 ## Screenshots
 
@@ -138,24 +142,11 @@ supabase functions deploy refresh-transactions
 
 ### 7. Run the app
 
-This app uses `react-native-plaid-link-sdk`, which includes native code and is **not compatible with Expo Go**. You'll need a development build instead.
+This app uses `react-native-plaid-link-sdk`, which includes native code and is **not compatible with Expo Go**. You'll need a development build instead:
 
-**Option A — build locally:**
 ```bash
 npx expo prebuild
 npx expo run:ios      # or: npx expo run:android
-```
-
-**Option B — build via EAS (no local Xcode/Android Studio setup required):**
-```bash
-npm install -g eas-cli
-eas login
-eas build:configure
-eas build --profile development --platform ios
-```
-Install the resulting build on your device from the link EAS gives you, then start the dev server pointed at that build:
-```bash
-npx expo start --dev-client
 ```
 
 ## How It Actually Works
