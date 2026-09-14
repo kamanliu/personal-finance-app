@@ -16,11 +16,24 @@ export default function Login() {
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [showPassword, setShowPassword] = useState(false);
-    const[showSigning,setShowSigning] = useState(false)
+    const [showSigning, setShowSigning] = useState(false)
 
     const handleLogin = async () => {
 
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) { alert(error.message) }
+        else {
+            console.log("Logged in: ", data.user?.email)
+        }
+        setShowSigning(false)
+
+    }
+
+    const handleTryDemo = async () => {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: 'demo@trackapp.dev',
+            password: 'demo'
+        });
         if (error) { alert(error.message) }
         else {
             console.log("Logged in: ", data.user?.email)
@@ -48,7 +61,7 @@ export default function Login() {
                         />
                         <Text style={{ fontWeight: 'bold', fontSize: 18 }}>Track App</Text>
                     </View>
-                    <Text style = {{fontWeight:'bold',fontSize:25}}>Welcome Back</Text>
+                    <Text style={{ fontWeight: 'bold', fontSize: 25 }}>Welcome Back</Text>
 
                     <Text>Email address</Text>
                     <View style={styles.inputBox}>
@@ -80,8 +93,12 @@ export default function Login() {
                     </View>
 
 
-                    <TouchableOpacity style={styles.saveButton} onPress={() => {handleLogin();setShowSigning(true)}}>
+                    <TouchableOpacity style={styles.saveButton} onPress={() => { handleLogin(); setShowSigning(true) }}>
                         <Text style={styles.saveButtonText}> {showSigning ? "Signing In" : "Sign"}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.demoButton} onPress={handleTryDemo}>
+                        <Text style={styles.demoButtonText}>Try Demo</Text>
                     </TouchableOpacity>
 
                 </View>
@@ -97,7 +114,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'stretch',
         padding: 20,
-          gap:12,
+        gap: 12,
         backgroundColor: 'white',
         borderRadius: 20,
         margin: 20
@@ -110,7 +127,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingHorizontal: 10,
         height: 48,
-        
+
     },
     icon: {
         marginRight: 8,
@@ -137,6 +154,20 @@ const styles = StyleSheet.create({
         color: 'red',
         textAlign: 'center',
         marginTop: 10,
+    },
+
+    demoButton: {
+        borderWidth: 1,
+        borderColor: '#1a56db',
+        padding: 15,
+        borderRadius: 8,
+        marginTop: 12,
+        alignItems: 'center',
+    },
+    demoButtonText: {
+        color: '#1a56db',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 
 })

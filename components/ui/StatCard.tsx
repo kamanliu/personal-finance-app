@@ -9,24 +9,30 @@ type StatCardProps = {
     value: string;
     iconSet: keyof typeof iconSets;
     icon: string;
-    percentage: string;
-    isPositive: boolean;
-        trendUp?: boolean;
+    percentage?: string;
+    isPositive?: boolean;
+    trendUp?: boolean;
     iconColor?: string;
 };
 
-export function StatCard({ label, value, icon, percentage, isPositive, iconSet, trendUp, iconColor }: StatCardProps) {
+export function StatCard({ label, value, icon, percentage, isPositive, trendUp, iconSet, iconColor }: StatCardProps) {
     const arrowIconName = (trendUp ?? isPositive) ? "trending-up" : "trending-down";
     const arrowColor = isPositive ? "#10b981" : "#ef4444";
 
-  return (
+    return (
         <View style={styles.card}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <IconCircle icon={icon} iconSet={iconSet} iconColor={iconColor} iconSize={22} />
-                <View style={[styles.trendCard, { backgroundColor: isPositive ? "#10b98120" : "#ef444420", }]}>
-                    <MaterialIcons name={arrowIconName} size={15} color={arrowColor} />
-                    <Text style={{ color: arrowColor, marginLeft: 4 }}>{percentage}</Text>
-                </View>
+                {percentage !== undefined ? (
+                    <View style={[styles.trendCard, { backgroundColor: isPositive ? "#10b98120" : "#ef444420" }]}>
+                        <MaterialIcons name={arrowIconName} size={15} color={arrowColor} />
+                        <Text style={{ color: arrowColor, marginLeft: 4 }}>{percentage}</Text>
+                    </View>
+                ) : (
+                    <View style={[styles.trendCard, { backgroundColor: '#6b728015' }]}>
+                        <Text style={{ color: '#6b7280', fontSize: 15 }}>Live</Text>
+                    </View>
+                )}
             </View>
             <Text style={{ marginBottom: 5 }}>{label}</Text>
             <Text style={styles.amountStyle}>{value}</Text>
@@ -39,10 +45,10 @@ const styles = StyleSheet.create({
         fontSize: 25,
     },
     amountStyle: {
-           
+
         fontWeight: 'bold',
-        fontSize: 24,
-        letterSpacing:0.5
+        fontSize: 23,
+        letterSpacing: 0.5
     },
     card: {
         marginBottom: 5,

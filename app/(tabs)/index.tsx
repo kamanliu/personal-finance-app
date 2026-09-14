@@ -47,8 +47,8 @@ export default function Home() {
   }
 
   function getSavingsRate(deposit: number, withdrawl: number) {
-    return deposit === 0 ? 0 : (deposit - withdrawl) / deposit;
-  }
+    return deposit === 0 ? 0 : ((deposit - withdrawl) / deposit) * 100;
+}
 
   console.log('thisMonth income:', thisMonth.deposit, 'lastMonth income:', lastMonth.deposit, 'result:', incomeChangePercent);
   const sections = groupTransactionsByDate(displayTransactions);
@@ -59,7 +59,7 @@ export default function Home() {
   return (
     <SafeAreaView >
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 5, padding: 8 }}>
-        <StatCard label="Net Worth" value={formatCurrency(balanceSummary.assets)} icon="wallet-outline" iconSet="ionicons" percentage={`${netWorthChangePercent.percentChange?.toFixed(1)}%`} isPositive={netWorthChangePercent.isPositive} iconColor="#1a56db" />
+        <StatCard label="Current Net Worth" value={formatCurrency(balanceSummary.assets)} icon="wallet-outline" iconSet="ionicons"  iconColor="#1a56db" />
         <StatCard label="Monthly Income" value={formatCurrency(income)} icon="arrow-up-right" iconSet="feather" percentage={`${(incomeChangePercent.percentChange)?.toFixed(1)}%`} isPositive={incomeChangePercent.isPositive} iconColor="#10b981" />
         <StatCard label="Monthly Expenses" value={formatCurrency(expense)} icon="arrow-down-left" iconSet="feather" percentage={`${(expenseChangePercent.percentChange)?.toFixed(1)}%`} trendUp={expenseChangePercent.isPositive} isPositive={!expenseChangePercent.isPositive} iconColor="#ef4444" />
         <StatCard label="Saving Rate" value={`${(savingsRate).toFixed(1)}%`} icon="piggy-bank-outline" iconSet="materialCI" percentage={`${(savingsRateChangePercent)?.toFixed(1)}%`} isPositive={savingsRateChangePercent >= 0} iconColor="#8b5cf6" />

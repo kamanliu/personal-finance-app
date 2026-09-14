@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // @ts-ignore
 import { create, dismissLink, LinkExit, LinkIOSPresentationStyle, LinkLogLevel, LinkSuccess, open } from 'react-native-plaid-link-sdk';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,8 +12,8 @@ import { useAccounts } from '../context/AccountContext';
 export default function LinkBank() {
     const { refreshData } = useAccounts();
     const { reconnectItemId } = useLocalSearchParams<{ reconnectItemId?: string }>();
-    const [link_token, setLinkToken] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
+    const [showIntro, setShowIntro] = useState(!reconnectItemId); // skip intro for reconnect flow
     const [user_id, setUserId] = useState<string | null>(null);
 
     const handleLinkBank = async (user_id: string | null) => {
@@ -22,12 +22,12 @@ export default function LinkBank() {
             return;
         }
 
+        setShowIntro(false);
         setIsLoading(true);
         try {
             let token: string | null = null;
 
             if (reconnectItemId) {
-                // RECONNECT FLOW: get an update-mode token for this specific item
                 const { data, error } = await supabase.functions.invoke('create-update-link-token', {
                     body: { item_id: reconnectItemId }
                 });
@@ -36,7 +36,6 @@ export default function LinkBank() {
                 }
                 token = data.link_token;
             } else {
-                // NORMAL FLOW: brand new bank connection
                 token = await PlaidService.getLinkToken(user_id);
             }
             console.log("Plaid Link Token:", token);
@@ -45,16 +44,13 @@ export default function LinkBank() {
                 throw new Error("Failed to fetch Plaid link token.");
             }
 
-            // 2. Configure and initialize the Plaid SDK
             create({ token });
 
-            // 3. Open the link interface with a tiny delay to allow the SDK to initialize
             setTimeout(() => {
                 open({
                     onSuccess: async (success: LinkSuccess) => {
                         console.log('Success', success);
                         if (reconnectItemId) {
-                            // Reconnect: just clear the login_required flag, no new token exchange needed
                             const { error } = await supabase
                                 .from('plaid_items')
                                 .update({ status: 'active' })
@@ -78,40 +74,41 @@ export default function LinkBank() {
 
                         if (error) {
                             console.error('Exchange failed:', error);
-                            setIsLoading(false); // Turn off loading if exchange fails
+                            setIsLoading(false);
                         } else {
                             console.log('Exchange success:', data);
                             await refreshData();
-                            router.back(); // Send them back to settings screen
+                            router.back();
                         }
                     },
                     onExit: (linkExit: LinkExit) => {
                         console.log('Exit: ', linkExit);
                         dismissLink();
-                        setIsLoading(false); // Turn off loading here so they can see retry button
-                        router.back(); // Go back automatically when they close Plaid
+                        setIsLoading(false);
+                        router.back();
                     },
                     iOSPresentationStyle: LinkIOSPresentationStyle.MODAL,
                     logLevel: LinkLogLevel.ERROR,
                 });
             }, 100);
 
-
         } catch (error) {
             console.error("Error during Plaid Link process:", error);
-
-            setIsLoading(false); // Turn off loading ONLY if configuration explicitly fails
-
+            setIsLoading(false);
         }
     }
+
     useEffect(() => {
         const initUser = async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user?.id) {
                     setUserId(user.id);
-                    // Run the function immediately upon getting the ID!
-                    await handleLinkBank(user.id);
+                    if (reconnectItemId) {
+                        // Reconnect flow: skip the intro screen, go straight to Plaid
+                        await handleLinkBank(user.id);
+                    }
+                    // Normal flow: wait for the user to tap "Continue" on the intro screen
                 } else {
                     setIsLoading(false);
                 }
@@ -123,53 +120,121 @@ export default function LinkBank() {
         initUser();
     }, []);
 
-
-
     return (
-        <SafeAreaView>
-            {/* <View>
-                <TouchableOpacity 
-                    disabled={isLoading} 
-                    onPress={handleLinkBank}
-                    style={{ opacity: isLoading ? 0.5 : 1 }}
-                >
-                    <Text>Link Bank Account</Text>
-                </TouchableOpacity>
-            </View>
-            
-            <FlatList
-                data={accounts}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                    <View>
-                        <Text>{`${item.name} $${(item.balance ?? 0).toFixed(2)}`}</Text>
+        <SafeAreaView style={{ flex: 1 }}>
+            {showIntro ? (
+                <View style={styles.introContainer}>
+                    <Text style={styles.introTitle}>🏦 Demo Bank Connection</Text>
+                    <Text style={styles.introSubtitle}>
+                        This app uses Plaid's sandbox environment — no real bank login required.
+                        On the next screen, search for "First Platypus Bank"
+                        and use these sandbox credentials:
+                    </Text>
+
+                    <View style={styles.credentialsCard}>
+                        <View style={styles.credentialRow}>
+                            <Text style={styles.credentialLabel}>Username</Text>
+                            <Text style={styles.credentialValue}>user_good</Text>
+                        </View>
+                        <View style={styles.credentialRow}>
+                            <Text style={styles.credentialLabel}>Password</Text>
+                            <Text style={styles.credentialValue}>pass_good</Text>
+                        </View>
+                        <View style={styles.credentialRow}>
+                            <Text style={styles.credentialLabel}>2FA (if asked)</Text>
+                            <Text style={styles.credentialValue}>1234</Text>
+                        </View>
                     </View>
-                )}
-            /> */}
-            <View style={{ alignItems: 'center' }}>
-                {isLoading ? (
-                    <>
-                        <ActivityIndicator size="large" color="#007AFF" />
-                        <Text style={{ marginTop: 12, color: '#8E8E93', fontSize: 16 }}>
-                            {reconnectItemId ? "Reconnecting your bank..." : "Opening secure bank connection..."}
-                        </Text>
-                    </>
-                ) : (
-                    // Fallback retry button if their internet drops or an authorization token fails
+
                     <TouchableOpacity
+                        style={styles.continueButton}
                         onPress={() => handleLinkBank(user_id)}
-                        style={{ backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 }}
+                        disabled={!user_id}
                     >
-                        <Text style={{ color: '#FFF', fontWeight: '600' }}>Retry Bank Connection</Text>
+                        <Text style={styles.continueButtonText}>Continue to Plaid</Text>
                     </TouchableOpacity>
-                )}
-            </View>
 
-            <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 40 }}>
-                <Text style={{ color: '#FF3B30', fontSize: 16 }}>Cancel and Go Back</Text>
-            </TouchableOpacity>
+                    <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
+                        <Text style={{ color: '#FF3B30', fontSize: 16 }}>Cancel</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <View style={{ alignItems: 'center' }}>
+                        {isLoading ? (
+                            <>
+                                <ActivityIndicator size="large" color="#007AFF" />
+                                <Text style={{ marginTop: 12, color: '#8E8E93', fontSize: 16 }}>
+                                    {reconnectItemId ? "Reconnecting your bank..." : "Opening secure bank connection..."}
+                                </Text>
+                            </>
+                        ) : (
+                            <TouchableOpacity
+                                onPress={() => handleLinkBank(user_id)}
+                                style={{ backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 }}
+                            >
+                                <Text style={{ color: '#FFF', fontWeight: '600' }}>Retry Bank Connection</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
 
+                    <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 40, alignSelf: 'center' }}>
+                        <Text style={{ color: '#FF3B30', fontSize: 16 }}>Cancel and Go Back</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
         </SafeAreaView>
-
     );
 }
+
+const styles = StyleSheet.create({
+    introContainer: {
+        flex: 1,
+        padding: 24,
+        justifyContent: 'center',
+    },
+    introTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    introSubtitle: {
+        fontSize: 14,
+        color: '#6b7280',
+        textAlign: 'center',
+        marginBottom: 24,
+        lineHeight: 20,
+    },
+    credentialsCard: {
+        backgroundColor: '#f2f3f7',
+        borderRadius: 16,
+        padding: 18,
+        marginBottom: 24,
+    },
+    credentialRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingVertical: 8,
+    },
+    credentialLabel: {
+        fontSize: 14,
+        color: '#6b7280',
+    },
+    credentialValue: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#111',
+    },
+    continueButton: {
+        backgroundColor: '#1a56db',
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    continueButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+});
