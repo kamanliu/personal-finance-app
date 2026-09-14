@@ -6,7 +6,7 @@ A React Native app that connects to your bank accounts and gives you a real-time
 
 <img src="./screenshots/demo.gif" width="300" />
 
-*Login → Home dashboard → Accounts → Stats/Budget → Link Bank (Plaid Sandbox)*
+*Login → Home dashboard  → Stats/Budget → Accounts → Link Bank (Plaid Sandbox)*
 
 ## Screenshots
 
